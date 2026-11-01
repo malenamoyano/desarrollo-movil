@@ -1,9 +1,10 @@
 
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -80,6 +81,13 @@ export default function DetalleEspacio() {
     espacio.imagenes.length > 0
       ? obtenerImagenEspacio(espacio.imagenes[0])
       : undefined;
+
+  function verDisponibilidad() {
+    router.push({
+      pathname: "/espacios/[id]/turnos",
+      params: { id: espacio!.id },
+    });
+  }
 
   return (
     <>
@@ -172,6 +180,19 @@ export default function DetalleEspacio() {
             {espacio.reglas}
           </Text>
         </View>
+
+        <Pressable
+          style={styles.botonDisponibilidad}
+          onPress={verDisponibilidad}
+        >
+          <Text style={styles.textoBoton}>
+            Ver disponibilidad
+          </Text>
+        </Pressable>
+
+        <Text style={styles.ayudaDisponibilidad}>
+          Consultá los horarios disponibles sin iniciar sesión.
+        </Text>
       </ScrollView>
     </>
   );
@@ -249,5 +270,23 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 23,
     color: "#444444",
+  },
+  botonDisponibilidad: {
+    backgroundColor: "#1976D2",
+    borderRadius: 12,
+    paddingVertical: 17,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  textoBoton: {
+    color: "#FFFFFF",
+    fontSize: 17,
+    fontWeight: "bold",
+  },
+  ayudaDisponibilidad: {
+    fontSize: 13,
+    color: "#666666",
+    textAlign: "center",
+    marginTop: 12,
   },
 });
