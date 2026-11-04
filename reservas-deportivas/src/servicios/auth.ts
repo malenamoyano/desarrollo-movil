@@ -2,7 +2,7 @@ import * as SecureStore from "expo-secure-store";
 
 import type { Usuario } from "../tipos/types";
 
-const API_URL = "http://192.168.100.8:3000";
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
 const CLAVE_TOKEN = "reservas_deportivas_token";
 
 interface RespuestaSesion {

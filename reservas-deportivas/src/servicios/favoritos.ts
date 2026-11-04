@@ -1,7 +1,7 @@
 import type { Usuario } from "../tipos/types";
 import { obtenerToken } from "./auth";
 
-const API_URL = "http://192.168.100.8:3000";
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 interface RespuestaUsuario {
   datos: Usuario;
