@@ -41,8 +41,17 @@ export default function Login() {
         [
           {
             text: "Continuar",
-            onPress: () => router.back(),
-          },
+            onPress: () => {
+              if (usuario.rol === "jugador") {
+                router.replace("/");
+              } else if (
+                usuario.rol === "encargado" ||
+                usuario.rol === "administrador"
+              ) {
+                router.replace("/encargado");
+              }
+            },
+          }
         ]
       );
     } catch (error) {
