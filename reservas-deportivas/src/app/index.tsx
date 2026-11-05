@@ -26,6 +26,7 @@ import {
   mostrarAvisoSinConexion,
 } from "../hooks/useConexion";
 
+
 export default function Inicio() {
   const [espacios, setEspacios] = useState<Espacio[]>([]);
   const [deportes, setDeportes] = useState<Deporte[]>([]);
@@ -44,6 +45,18 @@ export default function Inicio() {
 
   const { usuario, cargandoSesion } = useAuth();
   const { sinConexion } = useConexion();
+
+  // Redirigir a los usuarios de gestión a su panel.
+  useEffect(() => {
+    if (cargandoSesion || !usuario) return;
+
+    if (
+      usuario.rol === "encargado" ||
+      usuario.rol === "administrador"
+    ) {
+      router.replace("/encargado");
+    }
+  }, [cargandoSesion, usuario?.rol]);
 
   // Cargar el catálogo solamente si hay conexión.
   // Si se recupera Internet, vuelve a consultar la API.
@@ -146,6 +159,22 @@ export default function Inicio() {
   const hayFiltrosActivos =
     deporteSeleccionado !== null ||
     complejoSeleccionado !== null;
+
+  // Evitar mostrar el catálogo a usuarios de gestión.
+  if (
+    !cargandoSesion &&
+    (usuario?.rol === "encargado" ||
+      usuario?.rol === "administrador")
+  ) {
+    return (
+      <View style={styles.centrado}>
+        <ActivityIndicator size="large" color="#1565C0" />
+        <Text style={styles.textoSesionCargando}>
+          Ingresando al panel de gestión...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.contenedor}>
