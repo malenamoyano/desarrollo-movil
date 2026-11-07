@@ -3,7 +3,6 @@ import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,7 +13,7 @@ import {
 import type { Espacio } from "../../tipos/types";
 import { obtenerEspacioPorId } from "../../servicios/espacios";
 import { obtenerDeportePorId } from "../../servicios/deportes";
-import { obtenerImagenEspacio } from "../../servicios/imagenes";
+import ImagenEspacio from "../../componentes/ImagenEspacio";
 
 export default function DetalleEspacio() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -77,11 +76,7 @@ export default function DetalleEspacio() {
     );
   }
 
-  const imagenPrincipal =
-    espacio.imagenes.length > 0
-      ? obtenerImagenEspacio(espacio.imagenes[0])
-      : undefined;
-
+  
   function verDisponibilidad() {
     router.push({
       pathname: "/espacios/[id]/turnos",
@@ -102,11 +97,10 @@ export default function DetalleEspacio() {
         contentContainerStyle={styles.contenedor}
         showsVerticalScrollIndicator={false}
       >
-        {imagenPrincipal ? (
-          <Image
-            source={imagenPrincipal}
-            style={styles.imagenEspacio}
-            resizeMode="cover"
+        {espacio.imagenes.length > 0 ? (
+          <ImagenEspacio
+            fuente= {espacio.imagenes[0]}
+            style={styles.imagenEspacio} 
           />
         ) : (
           <View style={styles.sinImagen}>
