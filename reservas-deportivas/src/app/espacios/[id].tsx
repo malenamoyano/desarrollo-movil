@@ -14,6 +14,8 @@ import type { Espacio } from "../../tipos/types";
 import { obtenerEspacioPorId } from "../../servicios/espacios";
 import { obtenerDeportePorId } from "../../servicios/deportes";
 import ImagenEspacio from "../../componentes/ImagenEspacio";
+import { obtenerImagenEspacio } from "../../servicios/imagenes";
+import ReproductorVideo from "../../componentes/ReproductorVideo";
 
 export default function DetalleEspacio() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -123,6 +125,7 @@ export default function DetalleEspacio() {
             Características
           </Text>
 
+          <ReproductorVideo videoUrl={espacio.videoUrl ?? ""} />
           <Text style={styles.etiqueta}>
             Superficie
           </Text>

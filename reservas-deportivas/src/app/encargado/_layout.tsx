@@ -31,12 +31,12 @@ export default function EncargadoLayout() {
 
   return (
     <Stack
-      screenOptions={{
-        headerTitleAlign: "center",
-        headerBackTitle: "Volver",
-        headerShown: false,
-      }}
-    >
+    screenOptions={{
+      headerTitleAlign: "center",
+      headerBackTitle: "Volver",
+      headerShown: false,
+    }}
+  >
       <Stack.Screen
         name="index"
         options={{

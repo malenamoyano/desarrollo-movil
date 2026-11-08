@@ -76,6 +76,14 @@ export default function RootLayout() {
             headerBackTitle: "Volver",
           }}
         />
+
+        <Stack.Screen
+          name="mapa"
+          options={{
+            title: "Mapa de espacios",
+            headerBackTitle: "Volver",
+          }}
+        />
       </Stack>
     </AuthProvider>
   );
