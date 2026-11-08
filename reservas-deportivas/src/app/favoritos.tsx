@@ -4,7 +4,6 @@ import { router, Stack, useFocusEffect } from "expo-router";
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -14,9 +13,9 @@ import { Ionicons } from "@expo/vector-icons";
 
 import type { Espacio } from "../tipos/types";
 import { obtenerEspacios } from "../servicios/espacios";
-import { obtenerImagenEspacio } from "../servicios/imagenes";
 import { useAuth } from "../contextos/AuthContext";
 import CorazonFavorito from "../componentes/CorazonFavorito";
+import ImagenEspacio from "../componentes/ImagenEspacio";
 
 export default function Favoritos() {
   const { usuario } = useAuth();
@@ -116,10 +115,6 @@ export default function Favoritos() {
               </View>
             }
             renderItem={({ item }) => {
-              const imagen = item.imagenes[0]
-                ? obtenerImagenEspacio(item.imagenes[0])
-                : null;
-
               return (
                 <View style={styles.tarjeta}>
                   <Pressable
@@ -130,11 +125,10 @@ export default function Favoritos() {
                       })
                     }
                   >
-                    {imagen && (
-                      <Image
-                        source={imagen}
+                    {item.imagenes.length > 0 && (
+                      <ImagenEspacio
+                        fuente={item.imagenes[0]}
                         style={styles.imagen}
-                        resizeMode="cover"
                       />
                     )}
 

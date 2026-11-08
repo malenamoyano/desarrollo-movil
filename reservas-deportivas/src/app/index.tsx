@@ -4,7 +4,6 @@ import { router } from "expo-router";
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -18,8 +17,9 @@ import CorazonFavorito from "../componentes/CorazonFavorito";
 import type { Deporte, Espacio } from "../tipos/types";
 import { obtenerEspacios } from "../servicios/espacios";
 import { obtenerDeportes } from "../servicios/deportes";
-import { obtenerImagenEspacio } from "../servicios/imagenes";
 import { useAuth } from "../contextos/AuthContext";
+import ImagenEspacio from "../componentes/ImagenEspacio";
+import { sincronizarFotosEspacio } from "../servicios/mediosEspacios";
 
 import {
   useConexion,
@@ -103,6 +103,15 @@ export default function Inicio() {
       activo = false;
     };
   }, [sinConexion, recarga]);
+
+  //descargo las fotos de cada espacio en segundo plano
+  useEffect(() => {
+    if (sinConexion || espacios.length === 0) return;
+
+    espacios.forEach((espacio) => {
+      void sincronizarFotosEspacio(espacio).catch(() => {});
+    });
+  }, [espacios, sinConexion]);
 
   // Obtener complejos sin repetir nombres.
   const complejos = useMemo(() => {
@@ -497,11 +506,6 @@ export default function Inicio() {
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.lista}
             renderItem={({ item }) => {
-              const imagen =
-                item.imagenes.length > 0
-                  ? obtenerImagenEspacio(item.imagenes[0])
-                  : null;
-
               return (
                 <Pressable
                   style={styles.tarjeta}
@@ -510,11 +514,10 @@ export default function Inicio() {
                   }
                 >
                   {/* Fotografía */}
-                  {imagen && (
-                    <Image
-                      source={imagen}
+                  {item.imagenes.length > 0 && (
+                    <ImagenEspacio
+                      fuente={item.imagenes[0]}
                       style={styles.imagenEspacio}
-                      resizeMode="cover"
                     />
                   )}
 
