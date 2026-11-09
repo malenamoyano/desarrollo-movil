@@ -74,8 +74,10 @@ export async function sincronizarFotosEspacio(espacio: Espacio): Promise<void> {
 }
 
 export async function descargarVideo(espacio: Espacio): Promise<string | null> {
-    if(!espacio.videoUrl) return null;
-    if(!/^https?:\/\//i.test(espacio.videoUrl)) return null;
+    const url = espacio.videoUrl;
 
-    return descargarMedio(espacio.videoUrl);
+    if(typeof url !== 'string') return null;
+    if(!/^https?:\/\//i.test(url)) return null;
+
+    return descargarMedio(url);
 }

@@ -16,7 +16,7 @@ export const espaciosMock: Espacio[] = [
       longitud: -59.026,
     },
     imagenes: ["futbol5-1"],
-    videoUrl:require("../../assets/videos/ canchaFutbol5.mp4"),
+    videoUrl:require("../../assets/videos/canchaFutbol5.mp4"),
     reglas: "Utilizar calzado adecuado. Prohibidos los tapones metálicos.",
     activo: true,
   },

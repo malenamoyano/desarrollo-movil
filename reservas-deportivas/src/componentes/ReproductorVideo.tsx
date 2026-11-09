@@ -1,12 +1,24 @@
-import { useVideoPlayer, VideoView, type VideoPlayer } from 'expo-video';
+import { useVideoPlayer, VideoView, type VideoSource } from 'expo-video';
 import { StyleSheet, View, Text } from 'react-native';
+import { useMedioLocal } from '../hooks/useMedioLocal';
 
 type Props = {
-  videoUrl: string;
+  videoUrl: VideoSource | null;
 };
 
 export default function ReproductorVideo({ videoUrl }: Props) {
- const player = useVideoPlayer(videoUrl, (player: VideoPlayer) => {
+
+  const urlRemota = typeof videoUrl === 'string' && /^https?:\/\//i.test(videoUrl)
+    ? videoUrl
+    : null;
+
+  const uriLocal = useMedioLocal(urlRemota);
+
+  const fuente: VideoSource = urlRemota
+    ? uriLocal ?? urlRemota
+    : videoUrl;
+  
+ const player = useVideoPlayer(fuente, (player) => {
     player.loop = false;
   
   });
