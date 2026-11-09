@@ -125,7 +125,7 @@ export default function DetalleEspacio() {
             Características
           </Text>
 
-          <ReproductorVideo videoUrl={espacio.videoUrl ?? ""} />
+          <ReproductorVideo videoUrl={espacio.videoUrl ?? null} />
           <Text style={styles.etiqueta}>
             Superficie
           </Text>
