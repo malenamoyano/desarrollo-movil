@@ -48,6 +48,23 @@ export default function EncargadoIndex() {
 
       <Pressable
         style={styles.tarjeta}
+        onPress={() => router.push("/encargado/estado-cancha")}
+      >
+        <View style={styles.iconoContenedor}>
+          <Ionicons name="images-outline" size={30} color="#1565C0" />
+        </View>
+        <View style={styles.contenidoTarjeta}>
+          <Text style={styles.tituloTarjeta}>Estado de la cancha</Text>
+          <Text style={styles.descripcionTarjeta}>
+            Sacar o elegir fotos y subirlas para documentar el estado.
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={22} color="#757575" />
+      </Pressable>
+
+
+      <Pressable
+        style={styles.tarjeta}
         onPress={() => router.push("/encargado/escanear")}
       >
         <View style={styles.iconoContenedor}>

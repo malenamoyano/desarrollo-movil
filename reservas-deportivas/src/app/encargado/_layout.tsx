@@ -75,6 +75,11 @@ export default function EncargadoLayout() {
       />
 
       <Stack.Screen
+        name="estado-cancha"
+        options={{ title: "Estado de la cancha", headerShown: true }}
+      />
+
+      <Stack.Screen
         name="escanear"
         options={{
           title: "Escanear QR",

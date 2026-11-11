@@ -147,7 +147,14 @@ export default function Agenda() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.lista}
           renderItem={({ item }) => (
-            <Pressable style={styles.tarjetaTurno}>
+            <Pressable style={styles.tarjetaTurno}
+              onPress={() =>
+                router.push({
+                  pathname: "/encargado/estado-cancha",
+                  params: { espacioId: item.espacioId },
+                  })
+                }
+            >
               <View style={styles.horario}>
                 <Text style={styles.horaInicio}>{item.inicio}</Text>
                 <Text style={styles.horaFin}>{item.fin}</Text>

@@ -38,7 +38,15 @@
       "expo-sqlite",
       "expo-camera",
       "expo-video",
-      "expo-local-authentication"
+      "expo-local-authentication",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permitir que la app pueda acceder a tus fotos para documentar el estado de las canchas.",
+          "cameraPermission": "Permitir que la app pueda usar la cámara para sacar fotos del estado de las canchas.",
+          "microphonePermission": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
