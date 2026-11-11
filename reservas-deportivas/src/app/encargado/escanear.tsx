@@ -5,13 +5,11 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { Camera, CameraView } from "expo-camera";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
 
 import { registrarIngreso } from "../../servicios/encargado/encargado";
 
@@ -57,10 +55,49 @@ export default function Escanear() {
   }
 
   function manejarCodigo(datos: { data: string }) {
-    if (codigoQr) return; // ya escaneamos uno, no volvemos a procesar
-    setCodigoQr(datos.data);
-    // Vibración corta al detectar el código QR
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (codigoQr || error) return;
+
+    let contenido: {
+      codigoQr?: unknown;
+      espacioId?: unknown;
+    } | null;
+
+    try {
+      contenido = JSON.parse(datos.data);
+    } catch {
+      setError("El QR no tiene un formato válido.");
+      void Haptics.notificationAsync(
+        Haptics.NotificationFeedbackType.Error
+      ).catch(() => {});
+      return;
+    }
+
+    if (
+      !contenido ||
+      typeof contenido.codigoQr !== "string" ||
+      !contenido.codigoQr.trim() ||
+      typeof contenido.espacioId !== "string" ||
+      !contenido.espacioId.trim()
+    ) {
+      setError(
+        "El QR no contiene el código de reserva y el ID del espacio. Pedile al jugador que vuelva a abrir su QR actualizado."
+      );
+
+      void Haptics.notificationAsync(
+        Haptics.NotificationFeedbackType.Error
+      ).catch(() => {});
+
+      return;
+    }
+
+    setCodigoQr(contenido.codigoQr.trim());
+    setEspacioId(contenido.espacioId.trim());
+    setError(null);
+
+    // Vibración de confirmación al detectar un QR válido.
+    void Haptics.notificationAsync(
+      Haptics.NotificationFeedbackType.Success
+    ).catch(() => {});
   }
 
   async function registrarIngresoReserva() {
@@ -105,6 +142,7 @@ export default function Escanear() {
 
   function limpiarEscaneo() {
     setCodigoQr("");
+    setEspacioId("");
     setError(null);
   }
 
@@ -115,7 +153,9 @@ export default function Escanear() {
         <CameraView
           style={styles.camara}
           facing="back"
-          onBarcodeScanned={manejarCodigo}
+          onBarcodeScanned={
+            codigoQr || error ? undefined : manejarCodigo
+          }
           barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
         />
         <View style={styles.sobreCamara}>
@@ -138,14 +178,9 @@ export default function Escanear() {
         <Text style={styles.valorQr}>{codigoQr || "—"}</Text>
 
         <Text style={styles.etiqueta}>ID del espacio</Text>
-        <TextInput
-          style={styles.inputEspacio}
-          placeholder="Ej: esp-01"
-          value={espacioId}
-          onChangeText={setEspacioId}
-          autoCapitalize="none"
-          editable={!codigoQr}
-        />
+        <Text style={styles.valorQr}>
+          {espacioId || "Se obtiene automáticamente del QR"}
+        </Text>
 
         <Pressable
           style={[
@@ -171,17 +206,14 @@ export default function Escanear() {
           )}
         </Pressable>
 
-        {codigoQr && (
+        {(codigoQr || error) && (
           <Pressable style={styles.botonLimpiar} onPress={limpiarEscaneo}>
-            <Text style={styles.textoLimpiar}>Escanear otro código</Text>
+            <Text style={styles.textoLimpiar}>
+              {codigoQr ? "Escanear otro código" : "Intentar nuevamente"}
+            </Text>
           </Pressable>
         )}
       </View>
-
-      <Pressable style={styles.botonVolver} onPress={() => router.back()}>
-        <Ionicons name="chevron-back-outline" size={22} color="#1565C0" />
-        <Text style={styles.textoVolver}>Volver al panel</Text>
-      </Pressable>
     </View>
   );
 }
@@ -193,7 +225,7 @@ const styles = StyleSheet.create({
   },
 
   vistaCamara: {
-    flex: 2,
+    flex: 1,
     overflow: "hidden",
   },
 
@@ -220,8 +252,9 @@ const styles = StyleSheet.create({
 
   formulario: {
     flex: 1,
-    padding: 20,
-    gap: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    gap: 10,
   },
 
   alertaError: {
@@ -267,7 +300,7 @@ const styles = StyleSheet.create({
 
   botonRegistrar: {
     backgroundColor: "#1565C0",
-    paddingVertical: 16,
+    paddingVertical: 12,
     borderRadius: 10,
     alignItems: "center",
     flexDirection: "row",
@@ -294,19 +327,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666666",
     textDecorationLine: "underline",
-  },
-
-  botonVolver: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 16,
-  },
-
-  textoVolver: {
-    fontSize: 14,
-    color: "#1565C0",
-    fontWeight: "600",
   },
 
   centrado: {

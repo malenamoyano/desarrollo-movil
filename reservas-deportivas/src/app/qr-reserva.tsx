@@ -231,7 +231,10 @@ export default function QRReserva() {
             <View style={styles.tarjeta}>
               <View style={styles.contenedorQR}>
                 <QRCode
-                  value={reserva.codigoQr}
+                  value={JSON.stringify({
+                    codigoQr: reserva.codigoQr,
+                    espacioId: reserva.espacioId,
+                  })}
                   size={240}
                   color="#000000"
                   backgroundColor="#FFFFFF"
