@@ -1,6 +1,13 @@
 
 import { Stack, Redirect } from "expo-router";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+
+import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "../../contextos/AuthContext";
 
@@ -10,8 +17,31 @@ export default function EncargadoLayout() {
   // Esperamos a que se recupere la sesión.
   if (cargandoSesion) {
     return (
-      <View style={styles.cargando}>
-        <ActivityIndicator size="large" color="#1565C0" />
+      <View style={styles.pantallaBloqueo}>
+        <View style={styles.iconoBloqueo}>
+          <Ionicons
+            name="finger-print-outline"
+            size={48}
+            color="#1565C0"
+          />
+        </View>
+
+        <Text style={styles.tituloBloqueo}>
+          Reservas Deportivas
+        </Text>
+
+        <Text style={styles.descripcionBloqueo}>
+          Estamos verificando tu acceso para proteger tu cuenta.
+        </Text>
+
+        <ActivityIndicator
+          size="large"
+          color="#1565C0"
+        />
+
+        <Text style={styles.textoSesionCargando}>
+          Esperá un momento para continuar...
+        </Text>
       </View>
     );
   }
@@ -31,12 +61,12 @@ export default function EncargadoLayout() {
 
   return (
     <Stack
-    screenOptions={{
-      headerTitleAlign: "center",
-      headerBackTitle: "Volver",
-      headerShown: false,
-    }}
-  >
+      screenOptions={{
+        headerTitleAlign: "center",
+        headerBackTitle: "Volver",
+        headerShown: true,
+      }}
+    >
       <Stack.Screen
         name="index"
         options={{
@@ -62,10 +92,42 @@ export default function EncargadoLayout() {
 }
 
 const styles = StyleSheet.create({
-  cargando: {
+  pantallaBloqueo: {
     flex: 1,
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
     backgroundColor: "#F5F5F5",
+    gap: 14,
+  },
+
+  iconoBloqueo: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: "#E3F2FD",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 6,
+  },
+
+  tituloBloqueo: {
+    fontSize: 23,
+    fontWeight: "bold",
+    color: "#212121",
+    textAlign: "center",
+  },
+
+  descripcionBloqueo: {
+    fontSize: 15,
+    color: "#666666",
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 8,
+  },
+
+  textoSesionCargando: {
+    color: "#666666",
+    fontSize: 14,
   },
 });

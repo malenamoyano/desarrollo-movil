@@ -102,6 +102,12 @@ export default function Perfil() {
       return;
     }
 
+    // Seguridad también funciona sin conexión.
+    if (titulo === "Seguridad") {
+      router.push("/seguridad");
+      return;
+    }
+
     // Las demás opciones requieren conexión a Internet.
     if (sinConexion) {
       mostrarAvisoSinConexion();
@@ -230,7 +236,8 @@ export default function Perfil() {
         <View style={styles.tarjetaOpciones}>
           {opciones.map((opcion, indice) => {
             const requiereConexion =
-              opcion.titulo !== "Mis reservas";
+              opcion.titulo !== "Mis reservas" &&
+              opcion.titulo !== "Seguridad";
 
             const opcionSinConexion =
               sinConexion && requiereConexion;

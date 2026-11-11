@@ -84,6 +84,14 @@ export default function RootLayout() {
             headerBackTitle: "Volver",
           }}
         />
+
+      <Stack.Screen
+        name="encargado"
+        options={{
+          headerShown: false,
+        }}
+      />
+
       </Stack>
     </AuthProvider>
   );

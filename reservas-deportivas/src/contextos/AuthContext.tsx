@@ -4,9 +4,13 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import { Alert } from "react-native";
+import * as LocalAuthentication from "expo-local-authentication";
+import Storage from "expo-sqlite/kv-store";
 
 import * as Network from "expo-network";
 
@@ -24,6 +28,9 @@ import {
   obtenerUsuarioLocal,
   eliminarUsuarioLocal,
 } from "../servicios/sesionLocal";
+
+const CLAVE_BIOMETRIA =
+  "reservas_deportivas_biometria_habilitada";
 
 interface AuthContextType {
   usuario: Usuario | null;
@@ -70,17 +77,104 @@ export function AuthProvider({
   children: ReactNode;
 }) {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
-
   const [cargandoSesion, setCargandoSesion] = useState(true);
+  const autenticacionBiometricaVerificada = useRef(false);
 
   const actualizarSesion = useCallback(async () => {
     const token = await obtenerToken();
 
     if (!token) {
       setUsuario(null);
+      autenticacionBiometricaVerificada.current = false;
       return;
     }
 
+    // Comprobar si el usuario activó el acceso biométrico
+    const biometriaHabilitada = await Storage.getItem(
+      CLAVE_BIOMETRIA
+    );
+
+    if (
+      biometriaHabilitada === "true" &&
+      !autenticacionBiometricaVerificada.current
+    ) {
+      try {
+        // Comprobar las capacidades del dispositivo
+        const [
+          tieneHardware,
+          tieneBiometriaRegistrada,
+          tipos,
+        ] = await Promise.all([
+          LocalAuthentication.hasHardwareAsync(),
+          LocalAuthentication.isEnrolledAsync(),
+          LocalAuthentication.supportedAuthenticationTypesAsync(),
+        ]);
+
+        const admiteBiometria = tipos.some(
+          (tipo) =>
+            tipo ===
+              LocalAuthentication.AuthenticationType.FINGERPRINT ||
+            tipo ===
+              LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION
+        );
+
+        // Si no hay biometría disponible, solicitar acceso tradicional
+        if (
+          !tieneHardware ||
+          !tieneBiometriaRegistrada ||
+          !admiteBiometria
+        ) {
+          setUsuario(null);
+
+          Alert.alert(
+            "Acceso biométrico no disponible",
+            "No se pudo utilizar la huella o el reconocimiento facial. Iniciá sesión con tu correo y contraseña para continuar."
+          );
+
+          return;
+        }
+
+        // Solicitar identificación biométrica
+        const resultado =
+          await LocalAuthentication.authenticateAsync({
+            promptMessage:
+              "Desbloqueá tu sesión de Reservas Deportivas",
+            cancelLabel: "Cancelar",
+            disableDeviceFallback: true,
+          });
+
+        if (!resultado.success) {
+          setUsuario(null);
+
+          Alert.alert(
+            "Autenticación no completada",
+            "Para continuar, iniciá sesión con tu correo y contraseña."
+          );
+
+          return;
+        }
+
+        // La identidad fue verificada correctamente
+        autenticacionBiometricaVerificada.current = true;
+
+      } catch (error) {
+        console.warn(
+          "No se pudo completar la autenticación biométrica:",
+          error
+        );
+
+        setUsuario(null);
+
+        Alert.alert(
+          "Error de autenticación",
+          "No se pudo verificar tu identidad. Iniciá sesión con tu correo y contraseña para continuar."
+        );
+
+        return;
+      }
+    }
+
+    // A partir de acá continúa la recuperación habitual de la sesión
     const usuarioGuardado = await obtenerUsuarioLocal();
 
     const estadoRed = await Network.getNetworkStateAsync().catch(
@@ -101,6 +195,7 @@ export function AuthProvider({
 
       if (!usuarioActual) {
         setUsuario(null);
+
         throw new Error(
           "No se pudo recuperar el usuario de la sesión."
         );
@@ -108,6 +203,7 @@ export function AuthProvider({
 
       await guardarUsuarioLocal(usuarioActual);
       setUsuario(usuarioActual);
+
     } catch (error) {
       if (esErrorDeConexion(error)) {
         console.warn(
@@ -147,6 +243,8 @@ export function AuthProvider({
   ): Promise<Usuario> {
     const sesion = await autenticar(email, contrasena);
 
+    autenticacionBiometricaVerificada.current = true;
+
     setUsuario(sesion.usuario);
 
     try {
@@ -175,6 +273,8 @@ export function AuthProvider({
 
     await eliminarUsuarioLocal();
     await eliminarSesion();
+
+    autenticacionBiometricaVerificada.current = false;
 
     setUsuario(null);
   }

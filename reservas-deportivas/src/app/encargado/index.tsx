@@ -1,8 +1,4 @@
-
-import { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -14,32 +10,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../contextos/AuthContext";
 
 export default function EncargadoIndex() {
-  const { usuario, cerrarSesion } = useAuth();
-  const [cerrandoSesion, setCerrandoSesion] = useState(false);
+  const { usuario} = useAuth();
 
   <Stack.Screen options={{ title: "Panel de gestión" }} />
 
-  async function salir() {
-    try {
-      setCerrandoSesion(true);
-      await cerrarSesion();
-      router.replace("/login");
-    } catch (error) {
-      Alert.alert(
-        "Error",
-        error instanceof Error
-          ? error.message
-          : "No se pudo cerrar la sesión."
-      );
-    } finally {
-      setCerrandoSesion(false);
-    }
-  }
-
   return (
     <View style={styles.contenedor}>
-      <View style={styles.bienvenida}>
-        <Text style={styles.titulo}>
+      <View style={styles.seccionUsuario}>
+        <Text style={styles.textoBienvenida}>
           ¡Hola, {usuario?.nombre}!
         </Text>
 
@@ -47,6 +25,21 @@ export default function EncargadoIndex() {
           Desde acá podés gestionar las reservas de los
           espacios deportivos.
         </Text>
+
+        <Pressable
+          style={styles.botonPerfil}
+          onPress={() => router.push("/encargado/perfil")}
+        >
+          <Ionicons
+            name="person-circle-outline"
+            size={22}
+            color="#FFFFFF"
+          />
+
+          <Text style={styles.textoBotonPerfil}>
+            Mi perfil
+          </Text>
+        </Pressable>
       </View>
 
       <Text style={styles.tituloSeccion}>
@@ -111,31 +104,6 @@ export default function EncargadoIndex() {
         />
       </Pressable>
 
-      <View style={styles.pie}>
-        <Pressable
-          style={[
-            styles.botonSalir,
-            cerrandoSesion && styles.botonDeshabilitado,
-          ]}
-          onPress={salir}
-          disabled={cerrandoSesion}
-        >
-          {cerrandoSesion ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <>
-              <Ionicons
-                name="log-out-outline"
-                size={21}
-                color="#FFFFFF"
-              />
-              <Text style={styles.textoBoton}>
-                Cerrar sesión
-              </Text>
-            </>
-          )}
-        </Pressable>
-      </View>
     </View>
   );
 }
@@ -145,10 +113,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F5F5F5",
     padding: 20,
-  },
-
-  bienvenida: {
-    marginBottom: 30,
   },
 
   titulo: {
@@ -208,28 +172,30 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
 
-  pie: {
-    marginTop: "auto",
-    paddingTop: 20,
-  },
+seccionUsuario: {
+  marginBottom: 18,
+},
 
-  botonSalir: {
-    backgroundColor: "#C62828",
-    paddingVertical: 15,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 9,
-  },
+textoBienvenida: {
+  fontSize: 16,
+  fontWeight: "bold",
+  color: "#333333",
+  marginBottom: 10,
+},
 
-  botonDeshabilitado: {
-    opacity: 0.6,
-  },
+botonPerfil: {
+  backgroundColor: "#1565C0",
+  paddingVertical: 12,
+  borderRadius: 10,
+  alignItems: "center",
+  justifyContent: "center",
+  flexDirection: "row",
+  gap: 10,
+},
 
-  textoBoton: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "bold",
-  },
+textoBotonPerfil: {
+  color: "#FFFFFF",
+  fontSize: 15,
+  fontWeight: "bold",
+},
 });
