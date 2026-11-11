@@ -34,7 +34,6 @@ export default function EncargadoLayout() {
     screenOptions={{
       headerTitleAlign: "center",
       headerBackTitle: "Volver",
-      headerShown: false,
     }}
   >
       <Stack.Screen
@@ -42,6 +41,11 @@ export default function EncargadoLayout() {
         options={{
           title: "Panel de gestión",
         }}
+      />
+
+      <Stack.Screen
+        name="estado-cancha"
+        options={{ title: "Estado de la cancha", headerShown: true }}
       />
 
       <Stack.Screen

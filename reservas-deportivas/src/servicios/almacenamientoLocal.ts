@@ -6,7 +6,7 @@ const NOMBRE_BD = "reservas_deportivas.db";
 
 let promesaBD: Promise<SQLite.SQLiteDatabase> | null = null;
 
-async function obtenerBD(): Promise<SQLite.SQLiteDatabase> {
+export async function obtenerBD(): Promise<SQLite.SQLiteDatabase> {
   if (!promesaBD) {
     promesaBD = (async () => {
       const db = await SQLite.openDatabaseAsync(NOMBRE_BD);
