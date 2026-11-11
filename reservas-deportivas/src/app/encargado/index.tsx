@@ -8,7 +8,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { router, Stack } from "expo-router";
+import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "../../contextos/AuthContext";
@@ -16,8 +16,6 @@ import { useAuth } from "../../contextos/AuthContext";
 export default function EncargadoIndex() {
   const { usuario, cerrarSesion } = useAuth();
   const [cerrandoSesion, setCerrandoSesion] = useState(false);
-
-  <Stack.Screen options={{ title: "Panel de gestión" }} />
 
   async function salir() {
     try {
@@ -52,6 +50,23 @@ export default function EncargadoIndex() {
       <Text style={styles.tituloSeccion}>
         Gestión de reservas
       </Text>
+
+      <Pressable
+        style={styles.tarjeta}
+        onPress={() => router.push("/encargado/estado-cancha")}
+      >
+        <View style={styles.iconoContenedor}>
+          <Ionicons name="images-outline" size={30} color="#1565C0" />
+        </View>
+        <View style={styles.contenidoTarjeta}>
+          <Text style={styles.tituloTarjeta}>Estado de la cancha</Text>
+          <Text style={styles.descripcionTarjeta}>
+            Sacar o elegir fotos y subirlas para documentar el estado.
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={22} color="#757575" />
+      </Pressable>
+
 
       <Pressable
         style={styles.tarjeta}

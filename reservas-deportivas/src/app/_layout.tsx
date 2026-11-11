@@ -12,7 +12,11 @@ export default function RootLayout() {
             headerTitleAlign: "center",
           }}
         />
-
+        
+        <Stack.Screen
+          name="encargado"
+          options={{ headerShown: false }}
+        />
         <Stack.Screen
           name="login"
           options={{
