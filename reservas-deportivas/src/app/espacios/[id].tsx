@@ -1,3 +1,4 @@
+
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 
@@ -145,6 +146,29 @@ export default function DetalleEspacio() {
   }
 
   // --------------------------------------------------
+  // UBICACIÓN EN EL MAPA
+  // --------------------------------------------------
+  function verUbicacion() {
+    if (!espacio?.coordenadas) return;
+
+    const { latitud, longitud } = espacio.coordenadas;
+
+    if (
+      !Number.isFinite(latitud) ||
+      !Number.isFinite(longitud)
+    ) {
+      return;
+    }
+
+    // La pantalla mapa.tsx recibe el ID
+    // para centrarse en la cancha seleccionada.
+    router.push({
+      pathname: "/mapa",
+      params: { id: espacio.id },
+    });
+  }
+
+  // --------------------------------------------------
   // CARGANDO
   // --------------------------------------------------
   if (cargando) {
@@ -220,6 +244,14 @@ export default function DetalleEspacio() {
     videoEsLocal;
 
   // --------------------------------------------------
+  // VALIDAR COORDENADAS
+  // --------------------------------------------------
+  const tieneCoordenadas =
+    espacio.coordenadas != null &&
+    Number.isFinite(espacio.coordenadas.latitud) &&
+    Number.isFinite(espacio.coordenadas.longitud);
+
+  // --------------------------------------------------
   // INTERFAZ DEL DETALLE
   // --------------------------------------------------
   return (
@@ -281,13 +313,49 @@ export default function DetalleEspacio() {
           {espacio.complejo}
         </Text>
 
+        {/* ------------------------------------------
+            UBICACIÓN DE LA CANCHA
+            ------------------------------------------ */}
+        {tieneCoordenadas && (
+          <Pressable
+            style={styles.botonMapa}
+            onPress={verUbicacion}
+            accessibilityRole="button"
+            accessibilityLabel="Ver ubicación de la cancha en el mapa"
+          >
+            <View style={styles.iconoMapa}>
+              <Ionicons
+                name="location-outline"
+                size={25}
+                color="#1565C0"
+              />
+            </View>
+
+            <View style={styles.contenidoMapa}>
+              <Text style={styles.tituloMapa}>
+                Ubicación de la cancha
+              </Text>
+
+              <Text style={styles.descripcionMapa}>
+                Ver en el mapa y cómo llegar
+              </Text>
+            </View>
+
+            <Ionicons
+              name="chevron-forward"
+              size={21}
+              color="#1565C0"
+            />
+          </Pressable>
+        )}
+
         {/* CARACTERÍSTICAS */}
         <View style={styles.tarjeta}>
           <Text style={styles.seccion}>
             Características
           </Text>
 
-          {/* VIDEO: CORRECCIÓN DEL ERROR */}
+          {/* VIDEO */}
           {puedeMostrarVideo ? (
             <ReproductorVideo
               videoUrl={espacio.videoUrl ?? null}
@@ -464,6 +532,47 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#666666",
     marginBottom: 20,
+  },
+
+  // ----------------------------------------
+  // UBICACIÓN EN EL MAPA
+  // ----------------------------------------
+  botonMapa: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    marginBottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderWidth: 1,
+    borderColor: "#D8E8FA",
+  },
+
+  iconoMapa: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: "#E3F2FD",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  contenidoMapa: {
+    flex: 1,
+    gap: 4,
+  },
+
+  tituloMapa: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#1565C0",
+  },
+
+  descripcionMapa: {
+    fontSize: 13,
+    color: "#666666",
   },
 
   tarjeta: {
