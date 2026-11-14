@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { router } from "expo-router";
 import {
@@ -10,6 +9,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "../contextos/AuthContext";
+import { useConexion } from "../hooks/useConexion";
+
 import {
   agregarFavorito,
   quitarFavorito,
@@ -25,18 +26,28 @@ export default function CorazonFavorito({
   tamano = 26,
 }: Props) {
   const { usuario, actualizarSesion } = useAuth();
+  const { sinConexion } = useConexion();
+
   const [guardando, setGuardando] = useState(false);
 
   const esFavorito =
     usuario?.espaciosFavoritos?.includes(espacioId) ?? false;
 
   async function alternarFavorito() {
+    // Sin Internet solo permitimos consultar el estado.
+    if (sinConexion) {
+      return;
+    }
+
     if (!usuario) {
       Alert.alert(
         "Iniciar sesión",
         "Iniciá sesión para guardar tus canchas favoritas.",
         [
-          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Cancelar",
+            style: "cancel",
+          },
           {
             text: "Iniciar sesión",
             onPress: () => router.push("/login"),
@@ -57,8 +68,7 @@ export default function CorazonFavorito({
         await agregarFavorito(espacioId);
       }
 
-      // Actualiza el usuario del contexto desde GET /yo.
-      // Así el catálogo y la pantalla de favoritos quedan sincronizados.
+      // Recuperar el usuario actualizado desde GET /yo.
       await actualizarSesion();
     } catch (error) {
       Alert.alert(
@@ -76,15 +86,27 @@ export default function CorazonFavorito({
     <Pressable
       style={styles.boton}
       onPress={alternarFavorito}
-      disabled={guardando}
+      disabled={guardando || sinConexion}
       hitSlop={8}
       accessibilityRole="button"
+      accessibilityState={{
+        disabled: guardando || sinConexion,
+      }}
       accessibilityLabel={
-        esFavorito ? "Quitar de favoritos" : "Agregar a favoritos"
+        sinConexion
+          ? esFavorito
+            ? "Cancha favorita guardada"
+            : "Cancha no marcada como favorita"
+          : esFavorito
+            ? "Quitar de favoritos"
+            : "Agregar a favoritos"
       }
     >
       {guardando ? (
-        <ActivityIndicator color="#C62828" size="small" />
+        <ActivityIndicator
+          color="#C62828"
+          size="small"
+        />
       ) : (
         <Ionicons
           name={esFavorito ? "heart" : "heart-outline"}

@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useState } from "react";
 import { router } from "expo-router";
 import {
@@ -13,27 +12,43 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 
 import CorazonFavorito from "../componentes/CorazonFavorito";
+import ImagenEspacio from "../componentes/ImagenEspacio";
 
 import type { Deporte, Espacio } from "../tipos/types";
+
 import { obtenerEspacios } from "../servicios/espacios";
 import { obtenerDeportes } from "../servicios/deportes";
-import { useAuth } from "../contextos/AuthContext";
-import ImagenEspacio from "../componentes/ImagenEspacio";
 import { sincronizarFotosEspacio } from "../servicios/mediosEspacios";
+
+import {
+  guardarPreferenciasCatalogo,
+  obtenerPreferenciasCatalogo,
+} from "../servicios/preferenciasLocales";
+
+import { useAuth } from "../contextos/AuthContext";
 
 import {
   useConexion,
   mostrarAvisoSinConexion,
 } from "../hooks/useConexion";
 
+const nombresDeportes: Record<string, string> = {
+  "dep-futbol5": "Fútbol 5",
+  "dep-futbol11": "Fútbol 11",
+  "dep-basquet": "Básquet",
+  "dep-voley": "Vóley",
+  "dep-tenis": "Tenis",
+  "dep-gimnasio": "Gimnasio",
+};
 
 export default function Inicio() {
   const [espacios, setEspacios] = useState<Espacio[]>([]);
   const [deportes, setDeportes] = useState<Deporte[]>([]);
   const [cargando, setCargando] = useState(true);
-  const [errorCatalogo, setErrorCatalogo] = useState<string | null>(
-    null
-  );
+
+  const [errorCatalogo, setErrorCatalogo] = useState<
+    string | null
+  >(null);
 
   const [deporteSeleccionado, setDeporteSeleccionado] =
     useState<string | null>(null);
@@ -41,12 +56,78 @@ export default function Inicio() {
   const [complejoSeleccionado, setComplejoSeleccionado] =
     useState<string | null>(null);
 
+  // Evita sobrescribir las preferencias antes de recuperarlas.
+  const [preferenciasCargadas, setPreferenciasCargadas] =
+    useState(false);
+
   const [recarga, setRecarga] = useState(0);
 
   const { usuario, cargandoSesion } = useAuth();
   const { sinConexion } = useConexion();
 
-  // Redirigir a los usuarios de gestión a su panel.
+  // --------------------------------------------------
+  // RECUPERAR PREFERENCIAS DESDE KV-STORE
+  // --------------------------------------------------
+  useEffect(() => {
+    let activo = true;
+
+    async function cargarPreferencias() {
+      try {
+        const preferencias =
+          await obtenerPreferenciasCatalogo();
+
+        if (!activo) return;
+
+        setDeporteSeleccionado(
+          preferencias.deporteSeleccionado
+        );
+
+        setComplejoSeleccionado(
+          preferencias.complejoSeleccionado
+        );
+      } catch (error) {
+        console.warn(
+          "No se pudieron cargar las preferencias:",
+          error
+        );
+      } finally {
+        if (activo) {
+          setPreferenciasCargadas(true);
+        }
+      }
+    }
+
+    void cargarPreferencias();
+
+    return () => {
+      activo = false;
+    };
+  }, []);
+
+  // --------------------------------------------------
+  // GUARDAR PREFERENCIAS AL CAMBIAR FILTROS
+  // --------------------------------------------------
+  useEffect(() => {
+    if (!preferenciasCargadas) return;
+
+    void guardarPreferenciasCatalogo({
+      deporteSeleccionado,
+      complejoSeleccionado,
+    }).catch((error) => {
+      console.warn(
+        "No se pudieron guardar las preferencias:",
+        error
+      );
+    });
+  }, [
+    preferenciasCargadas,
+    deporteSeleccionado,
+    complejoSeleccionado,
+  ]);
+
+  // --------------------------------------------------
+  // REDIRECCIÓN DE USUARIOS DE GESTIÓN
+  // --------------------------------------------------
   useEffect(() => {
     if (cargandoSesion || !usuario) return;
 
@@ -58,37 +139,47 @@ export default function Inicio() {
     }
   }, [cargandoSesion, usuario?.rol]);
 
-  // Cargar el catálogo solamente si hay conexión.
-  // Si se recupera Internet, vuelve a consultar la API.
+  // --------------------------------------------------
+  // CARGA DE ESPACIOS CON Y SIN CONEXIÓN
+  // --------------------------------------------------
   useEffect(() => {
     let activo = true;
 
     async function cargarDatos() {
-      if (sinConexion) {
-        setCargando(false);
-        return;
-      }
-
       setCargando(true);
       setErrorCatalogo(null);
 
       try {
-        const [datosEspacios, datosDeportes] = await Promise.all([
-          obtenerEspacios(),
-          obtenerDeportes(),
-        ]);
+        const datosEspacios = await obtenerEspacios();
 
         if (!activo) return;
 
         setEspacios(datosEspacios);
-        setDeportes(datosDeportes);
+
+        if (!sinConexion) {
+          try {
+            const datosDeportes = await obtenerDeportes();
+
+            if (activo) {
+              setDeportes(datosDeportes);
+            }
+          } catch (error) {
+            console.warn(
+              "No se pudieron actualizar los deportes:",
+              error
+            );
+          }
+        }
       } catch (error) {
         if (!activo) return;
 
-        console.error("Error al cargar el catálogo:", error);
+        console.error(
+          "Error al cargar el catálogo:",
+          error
+        );
 
         setErrorCatalogo(
-          "No se pudo conectar con el servidor para cargar las canchas."
+          "No se pudieron recuperar los espacios deportivos."
         );
       } finally {
         if (activo) {
@@ -97,23 +188,53 @@ export default function Inicio() {
       }
     }
 
-    cargarDatos();
+    void cargarDatos();
 
     return () => {
       activo = false;
     };
   }, [sinConexion, recarga]);
 
-  //descargo las fotos de cada espacio en segundo plano
+  // --------------------------------------------------
+  // SINCRONIZACIÓN DE FOTOGRAFÍAS
+  // --------------------------------------------------
   useEffect(() => {
-    if (sinConexion || espacios.length === 0) return;
+    if (sinConexion || espacios.length === 0) {
+      return;
+    }
 
     espacios.forEach((espacio) => {
-      void sincronizarFotosEspacio(espacio).catch(() => {});
+      void sincronizarFotosEspacio(espacio).catch(
+        (error) => {
+          console.warn(
+            "No se pudo sincronizar una fotografía:",
+            error
+          );
+        }
+      );
     });
   }, [espacios, sinConexion]);
 
-  // Obtener complejos sin repetir nombres.
+  // --------------------------------------------------
+  // DEPORTES Y COMPLEJOS PARA LOS FILTROS
+  // --------------------------------------------------
+  const deportesParaFiltros = useMemo(() => {
+    const idsDisponibles = [
+      ...new Set(
+        espacios.map((espacio) => espacio.deporteId)
+      ),
+    ];
+
+    return idsDisponibles.map((id) => ({
+      id,
+      nombre:
+        deportes.find((deporte) => deporte.id === id)
+          ?.nombre ??
+        nombresDeportes[id] ??
+        id.replace(/^dep-/, "").replace(/-/g, " "),
+    }));
+  }, [espacios, deportes]);
+
   const complejos = useMemo(() => {
     return [
       ...new Set(
@@ -122,7 +243,9 @@ export default function Inicio() {
     ];
   }, [espacios]);
 
-  // Los filtros por deporte y complejo funcionan simultáneamente.
+  // --------------------------------------------------
+  // FILTRADO DE ESPACIOS
+  // --------------------------------------------------
   const espaciosFiltrados = useMemo(() => {
     return espacios.filter((espacio) => {
       const coincideDeporte =
@@ -148,17 +271,16 @@ export default function Inicio() {
 
   function obtenerNombreDeporte(deporteId: string) {
     return (
-      deportes.find((deporte) => deporte.id === deporteId)
-        ?.nombre ?? "Deporte"
+      deportesParaFiltros.find(
+        (deporte) => deporte.id === deporteId
+      )?.nombre ?? "Deporte"
     );
   }
 
+  // --------------------------------------------------
+  // NAVEGACIÓN AL DETALLE
+  // --------------------------------------------------
   function abrirEspacio(espacioId: string) {
-    if (sinConexion) {
-      mostrarAvisoSinConexion();
-      return;
-    }
-
     router.push({
       pathname: "/espacios/[id]",
       params: { id: espacioId },
@@ -169,7 +291,9 @@ export default function Inicio() {
     deporteSeleccionado !== null ||
     complejoSeleccionado !== null;
 
-  // Ocultar toda la aplicación mientras se recupera y verifica la sesión.
+  // --------------------------------------------------
+  // RECUPERACIÓN DE SESIÓN
+  // --------------------------------------------------
   if (cargandoSesion) {
     return (
       <View style={styles.pantallaBloqueo}>
@@ -186,7 +310,8 @@ export default function Inicio() {
         </Text>
 
         <Text style={styles.descripcionBloqueo}>
-          Estamos verificando tu acceso para proteger tu cuenta.
+          Estamos verificando tu acceso para proteger
+          tu cuenta.
         </Text>
 
         <ActivityIndicator
@@ -201,15 +326,20 @@ export default function Inicio() {
     );
   }
 
-  // Evitar mostrar el catálogo a usuarios de gestión.
+  // --------------------------------------------------
+  // ACCESO AL PANEL DE GESTIÓN
+  // --------------------------------------------------
   if (
-    !cargandoSesion &&
-    (usuario?.rol === "encargado" ||
-      usuario?.rol === "administrador")
+    usuario?.rol === "encargado" ||
+    usuario?.rol === "administrador"
   ) {
     return (
       <View style={styles.centrado}>
-        <ActivityIndicator size="large" color="#1565C0" />
+        <ActivityIndicator
+          size="large"
+          color="#1565C0"
+        />
+
         <Text style={styles.textoSesionCargando}>
           Ingresando al panel de gestión...
         </Text>
@@ -217,9 +347,11 @@ export default function Inicio() {
     );
   }
 
+  // --------------------------------------------------
+  // INTERFAZ PRINCIPAL
+  // --------------------------------------------------
   return (
     <View style={styles.contenedor}>
-      {/* Encabezado */}
       <Text style={styles.titulo}>
         Reservas Deportivas
       </Text>
@@ -228,21 +360,13 @@ export default function Inicio() {
         Espacios deportivos de Villaguay
       </Text>
 
-      {/* Acceso a la cuenta */}
-      {cargandoSesion ? (
-        <View style={styles.sesionCargando}>
-          <ActivityIndicator
-            size="small"
-            color="#1565C0"
-          />
-
-          <Text style={styles.textoSesionCargando}>
-            Recuperando sesión...
-          </Text>
-        </View>
-      ) : usuario ? (
+      {/* USUARIO Y PERFIL EN LA MISMA FILA */}
+      {usuario ? (
         <View style={styles.seccionUsuario}>
-          <Text style={styles.bienvenida}>
+          <Text
+            style={styles.bienvenida}
+            numberOfLines={2}
+          >
             ¡Hola, {usuario.nombre}!
           </Text>
 
@@ -252,7 +376,7 @@ export default function Inicio() {
           >
             <Ionicons
               name="person-circle-outline"
-              size={22}
+              size={18}
               color="#FFFFFF"
             />
 
@@ -278,70 +402,52 @@ export default function Inicio() {
         </Pressable>
       )}
 
-      {/* Modo sin conexión */}
-      {sinConexion ? (
-        <View style={styles.contenedorSinConexion}>
-          <View style={styles.iconoSinConexion}>
+      {/* AVISO OFFLINE COMPACTO */}
+      {sinConexion && (
+        <View style={styles.avisoOffline}>
+          <View style={styles.filaAvisoOffline}>
             <Ionicons
               name="cloud-offline-outline"
-              size={58}
-              color="#757575"
+              size={19}
+              color="#B26A00"
             />
-          </View>
 
-          <Text style={styles.tituloSinConexion}>
-            Sin conexión a Internet
-          </Text>
+            <Text style={styles.tituloAvisoOffline}>
+              Sin conexión
+            </Text>
 
-          <Text style={styles.mensajeSinConexion}>
-            No es posible consultar las canchas ni realizar
-            nuevas reservas en este momento.
-          </Text>
-
-          {usuario ? (
-            <View style={styles.tarjetaOffline}>
-              <Ionicons
-                name="qr-code-outline"
-                size={30}
-                color="#1565C0"
-              />
-
-              <Text style={styles.tituloTarjetaOffline}>
-                Tus reservas siguen disponibles
-              </Text>
-
-              <Text style={styles.textoTarjetaOffline}>
-                Podés entrar a Mi perfil, consultar tus
-                próximas reservas guardadas y presentar
-                sus códigos QR sin Internet.
-              </Text>
-
+            {usuario && (
               <Pressable
                 style={styles.botonReservasOffline}
-                onPress={() => router.push("/mis-reservas")}
+                onPress={() =>
+                  router.push("/mis-reservas")
+                }
               >
                 <Ionicons
                   name="calendar-outline"
-                  size={20}
+                  size={15}
                   color="#FFFFFF"
                 />
 
-                <Text style={styles.textoBotonReservasOffline}>
-                  Ver mis reservas
+                <Text
+                  style={styles.textoBotonReservasOffline}
+                >
+                  Mis reservas
                 </Text>
               </Pressable>
-            </View>
-          ) : (
-            <Text style={styles.mensajeSinConexion}>
-              Para acceder a tus reservas guardadas,
-              necesitás haber iniciado sesión previamente
-              en este dispositivo.
-            </Text>
-          )}
+            )}
+          </View>
 
+          <Text style={styles.textoAvisoOffline}>
+            Podés ver espacios y reservas guardados.
+            Para consultar horarios o hacer nuevas
+            reservas necesitás Internet.
+          </Text>
         </View>
-      ) : cargando ? (
-        /* Cargando catálogo */
+      )}
+
+      {/* CATÁLOGO DE ESPACIOS */}
+      {cargando ? (
         <View style={styles.centrado}>
           <ActivityIndicator
             size="large"
@@ -349,11 +455,12 @@ export default function Inicio() {
           />
 
           <Text style={styles.textoSesionCargando}>
-            Cargando espacios deportivos...
+            {sinConexion
+              ? "Cargando espacios guardados..."
+              : "Cargando espacios deportivos..."}
           </Text>
         </View>
-      ) : errorCatalogo ? (
-        /* Error al conectar con el backend */
+      ) : errorCatalogo && espacios.length === 0 ? (
         <View style={styles.contenedorSinConexion}>
           <Ionicons
             name="alert-circle-outline"
@@ -380,12 +487,16 @@ export default function Inicio() {
             </Text>
           </Pressable>
 
-          {usuario && (
+          {usuario && !sinConexion && (
             <Pressable
               style={styles.botonReservasOffline}
-              onPress={() => router.push("/mis-reservas")}
+              onPress={() =>
+                router.push("/mis-reservas")
+              }
             >
-              <Text style={styles.textoBotonReservasOffline}>
+              <Text
+                style={styles.textoBotonReservasOffline}
+              >
                 Ir a mis reservas
               </Text>
             </Pressable>
@@ -393,7 +504,7 @@ export default function Inicio() {
         </View>
       ) : (
         <>
-          {/* Filtros */}
+          {/* FILTRO POR DEPORTE */}
           <View style={styles.seccionFiltros}>
             <Text style={styles.tituloFiltro}>
               Deporte
@@ -425,7 +536,7 @@ export default function Inicio() {
                 </Text>
               </Pressable>
 
-              {deportes.map((deporte) => {
+              {deportesParaFiltros.map((deporte) => {
                 const seleccionado =
                   deporteSeleccionado === deporte.id;
 
@@ -455,6 +566,7 @@ export default function Inicio() {
               })}
             </ScrollView>
 
+            {/* FILTRO POR COMPLEJO */}
             <Text style={styles.tituloFiltro}>
               Complejo
             </Text>
@@ -515,7 +627,7 @@ export default function Inicio() {
               })}
             </ScrollView>
 
-            {/* Cantidad de resultados */}
+            {/* RESULTADOS */}
             <View style={styles.filaResultados}>
               <Text style={styles.contador}>
                 {espaciosFiltrados.length} de{" "}
@@ -532,7 +644,7 @@ export default function Inicio() {
             </View>
           </View>
 
-          {/* Listado de espacios deportivos */}
+          {/* LISTADO DE ESPACIOS */}
           <FlatList
             data={espaciosFiltrados}
             keyExtractor={(item) => item.id}
@@ -545,7 +657,6 @@ export default function Inicio() {
                     abrirEspacio(item.id)
                   }
                 >
-                  {/* Fotografía */}
                   {item.imagenes.length > 0 && (
                     <ImagenEspacio
                       fuente={item.imagenes[0]}
@@ -553,7 +664,6 @@ export default function Inicio() {
                     />
                   )}
 
-                  {/* Nombre y favorito */}
                   <View style={styles.filaNombre}>
                     <Text
                       style={[
@@ -564,10 +674,10 @@ export default function Inicio() {
                       {item.nombre}
                     </Text>
 
-                    <CorazonFavorito
-                      espacioId={item.id}
-                    />
-                  </View>
+                      <CorazonFavorito
+                        espacioId={item.id}
+                      />
+                      </View>
 
                   <Text style={styles.deporte}>
                     {obtenerNombreDeporte(
@@ -608,17 +718,18 @@ export default function Inicio() {
             ListEmptyComponent={
               <View style={styles.sinResultados}>
                 <Text style={styles.mensajeVacio}>
-                  No hay espacios que coincidan
-                  con los filtros.
+                  {sinConexion && espacios.length === 0
+                    ? "Todavía no hay espacios guardados en este dispositivo."
+                    : "No hay espacios que coincidan con los filtros."}
                 </Text>
 
-                <Pressable
-                  onPress={limpiarFiltros}
-                >
-                  <Text style={styles.limpiar}>
-                    Mostrar todos los espacios
-                  </Text>
-                </Pressable>
+                {hayFiltrosActivos && (
+                  <Pressable onPress={limpiarFiltros}>
+                    <Text style={styles.limpiar}>
+                      Mostrar todos los espacios
+                    </Text>
+                  </Pressable>
+                )}
               </View>
             }
           />
@@ -628,6 +739,9 @@ export default function Inicio() {
   );
 }
 
+// --------------------------------------------------
+// ESTILOS
+// --------------------------------------------------
 const styles = StyleSheet.create({
   pantallaBloqueo: {
     flex: 1,
@@ -666,42 +780,35 @@ const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
     paddingHorizontal: 16,
-    paddingTop: 18,
+    paddingTop: 12,
     backgroundColor: "#F5F5F5",
   },
 
   titulo: {
     fontSize: 26,
     fontWeight: "bold",
-    marginBottom: 6,
+    marginBottom: 5,
   },
 
   subtitulo: {
     fontSize: 16,
     color: "#666666",
-    marginBottom: 18,
+    marginBottom: 12,
   },
 
   botonLogin: {
     backgroundColor: "#1565C0",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     borderRadius: 10,
     alignItems: "center",
-    marginBottom: 18,
+    marginBottom: 12,
   },
 
   textoBotonLogin: {
     color: "#FFFFFF",
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "bold",
-  },
-
-  sesionCargando: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 18,
   },
 
   textoSesionCargando: {
@@ -710,34 +817,39 @@ const styles = StyleSheet.create({
   },
 
   seccionUsuario: {
-    marginBottom: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    marginBottom: 12,
   },
 
   bienvenida: {
+    flex: 1,
     fontSize: 16,
     fontWeight: "bold",
     color: "#333333",
-    marginBottom: 10,
   },
 
   botonPerfil: {
     backgroundColor: "#1565C0",
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 9,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
-    gap: 10,
+    gap: 6,
   },
 
   textoBotonPerfil: {
     color: "#FFFFFF",
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: "bold",
   },
 
   seccionFiltros: {
-    marginBottom: 12,
+    marginBottom: 8,
   },
 
   tituloFiltro: {
@@ -748,7 +860,7 @@ const styles = StyleSheet.create({
 
   filaFiltros: {
     gap: 8,
-    paddingBottom: 14,
+    paddingBottom: 10,
   },
 
   botonFiltro: {
@@ -874,11 +986,6 @@ const styles = StyleSheet.create({
     gap: 18,
   },
 
-  iconoSinConexion: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
   tituloSinConexion: {
     fontSize: 22,
     fontWeight: "bold",
@@ -893,47 +1000,23 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  tarjetaOffline: {
-    width: "100%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    padding: 20,
-    alignItems: "center",
-    gap: 14,
-  },
-
-  tituloTarjetaOffline: {
-    fontSize: 17,
-    fontWeight: "bold",
-    color: "#212121",
-    textAlign: "center",
-  },
-
-  textoTarjetaOffline: {
-    fontSize: 14,
-    color: "#757575",
-    textAlign: "center",
-    lineHeight: 21,
-  },
-
   botonReservasOffline: {
     backgroundColor: "#1565C0",
-    paddingVertical: 13,
-    paddingHorizontal: 24,
-    borderRadius: 10,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
-    gap: 9,
-    width: "100%",
+    gap: 5,
   },
 
   textoBotonReservasOffline: {
     color: "#FFFFFF",
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: "bold",
   },
- 
+
   botonReintentar: {
     backgroundColor: "#1565C0",
     paddingVertical: 13,
@@ -946,5 +1029,34 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 15,
   },
-});
 
+  avisoOffline: {
+    backgroundColor: "#FFF3E0",
+    borderWidth: 1,
+    borderColor: "#FFE0B2",
+    borderRadius: 10,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
+    gap: 5,
+    marginBottom: 10,
+  },
+
+  filaAvisoOffline: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+  },
+
+  tituloAvisoOffline: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#8B5400",
+  },
+
+  textoAvisoOffline: {
+    fontSize: 12,
+    color: "#6D5A39",
+    lineHeight: 17,
+  },
+});

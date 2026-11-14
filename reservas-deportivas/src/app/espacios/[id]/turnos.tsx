@@ -2,8 +2,15 @@ import {
   useConexion,
   mostrarAvisoSinConexion,
 } from "../../../hooks/useConexion";
-import { router, Stack, useLocalSearchParams } from "expo-router";
+
+import {
+  router,
+  Stack,
+  useLocalSearchParams,
+} from "expo-router";
+
 import { useEffect, useState } from "react";
+
 import {
   ActivityIndicator,
   Pressable,
@@ -12,6 +19,8 @@ import {
   Text,
   View,
 } from "react-native";
+
+import { Ionicons } from "@expo/vector-icons";
 
 import type { Turno } from "../../../tipos/types";
 import { obtenerTurnosPorEspacio } from "../../../servicios/turnos";
@@ -53,37 +62,48 @@ export default function DisponibilidadTurnos() {
   const { sinConexion } = useConexion();
 
   const [dias] = useState(generarProximosDias);
+
   const [fechaSeleccionada, setFechaSeleccionada] =
     useState(dias[0].fecha);
 
   const [turnos, setTurnos] = useState<Turno[]>([]);
+
   const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  const [error, setError] = useState<string | null>(
+    null
+  );
+
   const [recarga, setRecarga] = useState(0);
 
-  useEffect(() => {
-    if (sinConexion) {
-        mostrarAvisoSinConexion();
-        router.back();
-    }
-  }, [sinConexion]);
-
+  // --------------------------------------------------
+  // CONSULTAR DISPONIBILIDAD
+  //
+  // IMPORTANTE:
+  // No navegamos automáticamente cuando se pierde
+  // la conexión. El usuario permanece en esta pantalla.
+  // --------------------------------------------------
   useEffect(() => {
     let activo = true;
 
     async function cargarTurnos() {
       if (sinConexion) {
+        // No conservar horarios que podrían haber cambiado.
+        setTurnos([]);
+        setError(null);
         setCargando(false);
         return;
       }
-      
-      setCargando(true);  
+
+      setCargando(true);
       setError(null);
       setTurnos([]);
 
       try {
         if (!id) {
-          throw new Error("No se identificó el espacio deportivo.");
+          throw new Error(
+            "No se identificó el espacio deportivo."
+          );
         }
 
         const datos = await obtenerTurnosPorEspacio(
@@ -109,16 +129,22 @@ export default function DisponibilidadTurnos() {
       }
     }
 
-    cargarTurnos();
+    void cargarTurnos();
 
     return () => {
       activo = false;
     };
   }, [id, fechaSeleccionada, recarga, sinConexion]);
 
-  // Al seleccionar un turno libre, abrimos la
-  // pantalla de confirmación con los datos del turno.
+  // --------------------------------------------------
+  // SELECCIONAR TURNO
+  // --------------------------------------------------
   function seleccionarTurno(turno: Turno) {
+    if (sinConexion) {
+      mostrarAvisoSinConexion();
+      return;
+    }
+
     if (turno.estado !== "libre") {
       return;
     }
@@ -183,10 +209,43 @@ export default function DisponibilidadTurnos() {
         </Text>
 
         <Text style={styles.descripcion}>
-          Seleccioná un día para consultar los horarios de
-          esta cancha. No necesitás iniciar sesión.
+          Seleccioná un día para consultar los horarios
+          de esta cancha. No necesitás iniciar sesión.
         </Text>
 
+        {/* ----------------------------------------
+            AVISO SIN CONEXIÓN
+            ---------------------------------------- */}
+        {sinConexion && (
+          <View style={styles.avisoOffline}>
+            <Ionicons
+              name="cloud-offline-outline"
+              size={28}
+              color="#E65100"
+            />
+
+            <View style={styles.contenidoOffline}>
+              <Text style={styles.tituloOffline}>
+                Sin conexión a Internet
+              </Text>
+
+              <Text style={styles.textoOffline}>
+                No se puede consultar la disponibilidad
+                de los turnos en este momento.
+              </Text>
+
+              <Text style={styles.textoOffline}>
+                Podés permanecer en esta pantalla.
+                Los horarios se actualizarán
+                cuando recuperes la conexión.
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* ----------------------------------------
+            SELECCIÓN DE FECHA
+            ---------------------------------------- */}
         <Text style={styles.subtitulo}>
           Próximos 7 días
         </Text>
@@ -203,9 +262,13 @@ export default function DisponibilidadTurnos() {
             return (
               <Pressable
                 key={dia.fecha}
+                disabled={sinConexion}
                 style={[
                   styles.tarjetaFecha,
-                  seleccionado && styles.fechaActiva,
+                  seleccionado &&
+                    styles.fechaActiva,
+                  sinConexion &&
+                    styles.deshabilitado,
                 ]}
                 onPress={() =>
                   setFechaSeleccionada(dia.fecha)
@@ -214,7 +277,8 @@ export default function DisponibilidadTurnos() {
                 <Text
                   style={[
                     styles.nombreDia,
-                    seleccionado && styles.textoActivo,
+                    seleccionado &&
+                      styles.textoActivo,
                   ]}
                 >
                   {dia.nombre}
@@ -223,7 +287,8 @@ export default function DisponibilidadTurnos() {
                 <Text
                   style={[
                     styles.numeroDia,
-                    seleccionado && styles.textoActivo,
+                    seleccionado &&
+                      styles.textoActivo,
                   ]}
                 >
                   {dia.numero}
@@ -232,7 +297,8 @@ export default function DisponibilidadTurnos() {
                 <Text
                   style={[
                     styles.nombreDia,
-                    seleccionado && styles.textoActivo,
+                    seleccionado &&
+                      styles.textoActivo,
                   ]}
                 >
                   {dia.mes}
@@ -242,23 +308,55 @@ export default function DisponibilidadTurnos() {
           })}
         </ScrollView>
 
+        {/* ----------------------------------------
+            ENCABEZADO DE HORARIOS
+            ---------------------------------------- */}
         <View style={styles.encabezadoTurnos}>
           <Text style={styles.subtitulo}>
             Horarios
           </Text>
 
           <Pressable
-            onPress={() => setRecarga((valor) => valor + 1)}
+            disabled={sinConexion}
+            onPress={() =>
+              setRecarga((valor) => valor + 1)
+            }
           >
-            <Text style={styles.actualizar}>
+            <Text
+              style={[
+                styles.actualizar,
+                sinConexion &&
+                  styles.deshabilitado,
+              ]}
+            >
               Actualizar
             </Text>
           </Pressable>
         </View>
 
-        {cargando ? (
+        {/* ----------------------------------------
+            RESULTADOS
+            ---------------------------------------- */}
+        {sinConexion ? (
           <View style={styles.centrado}>
-            <ActivityIndicator size="large" color="#1976D2" />
+            <Ionicons
+              name="wifi-outline"
+              size={42}
+              color="#9E9E9E"
+            />
+
+            <Text style={styles.mensajeOffline}>
+              Los horarios no están disponibles
+              sin conexión a Internet.
+            </Text>
+          </View>
+        ) : cargando ? (
+          <View style={styles.centrado}>
+            <ActivityIndicator
+              size="large"
+              color="#1976D2"
+            />
+
             <Text style={styles.mensaje}>
               Consultando horarios...
             </Text>
@@ -286,19 +384,25 @@ export default function DisponibilidadTurnos() {
         ) : (
           <View style={styles.grilla}>
             {turnos.map((turno) => {
-              const disponible = turno.estado === "libre";
+              const disponible =
+                turno.estado === "libre";
 
               return (
                 <Pressable
                   key={turno.id}
-                  disabled={!disponible}
-                  onPress={() => seleccionarTurno(turno)}
+                  disabled={
+                    !disponible || sinConexion
+                  }
+                  onPress={() =>
+                    seleccionarTurno(turno)
+                  }
                   style={[
                     styles.tarjetaTurno,
                     {
-                      backgroundColor: obtenerColor(
-                        turno.estado
-                      ),
+                      backgroundColor:
+                        obtenerColor(
+                          turno.estado
+                        ),
                     },
                   ]}
                 >
@@ -314,16 +418,21 @@ export default function DisponibilidadTurnos() {
                         : styles.estadoNoDisponible,
                     ]}
                   >
-                    {obtenerEtiqueta(turno.estado)}
+                    {obtenerEtiqueta(
+                      turno.estado
+                    )}
                   </Text>
 
                   {disponible && (
                     <Text style={styles.precio}>
-                      {turno.precio.toLocaleString("es-AR", {
-                        style: "currency",
-                        currency: "ARS",
-                        maximumFractionDigits: 0,
-                      })}
+                      {turno.precio.toLocaleString(
+                        "es-AR",
+                        {
+                          style: "currency",
+                          currency: "ARS",
+                          maximumFractionDigits: 0,
+                        }
+                      )}
                     </Text>
                   )}
 
@@ -339,11 +448,14 @@ export default function DisponibilidadTurnos() {
           </View>
         )}
 
-        <Text style={styles.nota}>
-          Los horarios se consultan en tiempo real.
-          La disponibilidad puede cambiar hasta que
-          se confirme la reserva.
-        </Text>
+        {/* NOTA */}
+        {!sinConexion && (
+          <Text style={styles.nota}>
+            Los horarios se consultan en tiempo real.
+            La disponibilidad puede cambiar hasta
+            que se confirme la reserva.
+          </Text>
+        )}
       </ScrollView>
     </>
   );
@@ -437,6 +549,7 @@ const styles = StyleSheet.create({
     color: "#666666",
     fontSize: 14,
     marginTop: 10,
+    textAlign: "center",
   },
 
   error: {
@@ -499,5 +612,48 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: "#777777",
     textAlign: "center",
+  },
+
+  // ----------------------------------------
+  // ESTILOS OFFLINE
+  // ----------------------------------------
+  avisoOffline: {
+    backgroundColor: "#FFF3E0",
+    borderColor: "#FFE0B2",
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 22,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+
+  contenidoOffline: {
+    flex: 1,
+    gap: 8,
+  },
+
+  tituloOffline: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#8B5400",
+  },
+
+  textoOffline: {
+    fontSize: 13,
+    color: "#6D5A39",
+    lineHeight: 20,
+  },
+
+  mensajeOffline: {
+    color: "#757575",
+    fontSize: 15,
+    textAlign: "center",
+    lineHeight: 22,
+  },
+
+  deshabilitado: {
+    opacity: 0.5,
   },
 });
