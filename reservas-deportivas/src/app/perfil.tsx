@@ -116,8 +116,13 @@ export default function Perfil() {
       return;
     }
 
-    // Seguridad mantiene su acceso offline.
+    // Seguridad requiere conexión a Internet.
     if (titulo === "Seguridad") {
+      if (sinConexion) {
+        mostrarAvisoSinConexion();
+        return;
+      }
+
       router.push("/seguridad");
       return;
     }
@@ -253,7 +258,6 @@ export default function Perfil() {
             // tanto online como offline.
             const requiereConexion =
               opcion.titulo !== "Mis reservas" &&
-              opcion.titulo !== "Seguridad" &&
               opcion.titulo !== "Notificaciones" &&
               opcion.titulo !== "Mis favoritos";
 

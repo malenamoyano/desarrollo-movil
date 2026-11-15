@@ -10,6 +10,10 @@ import {
   View,
 } from "react-native";
 import { Stack } from "expo-router";
+import {
+  useConexion,
+  mostrarAvisoSinConexion,
+} from "../hooks/useConexion";
 import { Ionicons } from "@expo/vector-icons";
 import * as LocalAuthentication from "expo-local-authentication";
 import Storage from "expo-sqlite/kv-store";
@@ -18,6 +22,7 @@ const CLAVE_BIOMETRIA =
   "reservas_deportivas_biometria_habilitada";
 
 export default function Seguridad() {
+  const { sinConexion } = useConexion();
   const [cargando, setCargando] = useState(true);
   const [procesando, setProcesando] = useState(false);
 
@@ -133,7 +138,12 @@ export default function Seguridad() {
   async function cambiarBiometria(activar: boolean) {
     if (procesando) return;
 
-    setProcesando(true);
+    if (sinConexion) {
+      mostrarAvisoSinConexion();
+      return;
+  }
+
+  setProcesando(true);
 
     try {
       // Desactivar el acceso biométrico.
@@ -243,7 +253,27 @@ export default function Seguridad() {
         style={styles.contenedor}
         contentContainerStyle={styles.contenido}
       >
-        {cargando ? (
+      {sinConexion ? (
+        <View style={styles.aviso}>
+          <Ionicons
+            name="cloud-offline-outline"
+            size={25}
+            color="#1565C0"
+          />
+
+          <View style={styles.datos}>
+            <Text style={styles.titulo}>
+              Seguridad no disponible
+            </Text>
+
+            <Text style={styles.textoAviso}>
+              Para consultar o modificar la configuración de seguridad
+              necesitás conexión a Internet. Volvé a conectarte para
+              acceder a esta sección.
+            </Text>
+          </View>
+        </View>
+      ) : cargando ? (
           <View style={styles.centrado}>
             <ActivityIndicator
               size="large"
@@ -294,7 +324,11 @@ export default function Seguridad() {
                 <Switch
                   value={biometriaActiva}
                   onValueChange={cambiarBiometria}
-                  disabled={!biometriaDisponible || procesando}
+                  disabled={
+                    sinConexion ||
+                    !biometriaDisponible ||
+                    procesando
+                  }
                   trackColor={{
                     false: "#BDBDBD",
                     true: "#81C784",

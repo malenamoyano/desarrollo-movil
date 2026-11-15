@@ -11,12 +11,15 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-
 import { useAuth } from "../../contextos/AuthContext";
+import {
+  useConexion,
+  mostrarAvisoSinConexion,
+} from "../../hooks/useConexion";
 
 export default function PerfilEncargado() {
   const { usuario, cerrarSesion } = useAuth();
-
+  const { sinConexion } = useConexion();
   const [cerrandoSesion, setCerrandoSesion] = useState(false);
 
   async function salir() {
@@ -53,6 +56,15 @@ export default function PerfilEncargado() {
         },
       ]
     );
+  }
+
+  function abrirSeguridad() {
+    if (sinConexion) {
+      mostrarAvisoSinConexion();
+      return;
+    }
+
+    router.push("/seguridad");
   }
 
   const nombreRol =
@@ -96,32 +108,65 @@ export default function PerfilEncargado() {
           </View>
         </View>
 
+        {/* Aviso de conexión */}
+        {sinConexion && (
+          <View style={styles.avisoSinConexion}>
+            <Ionicons
+              name="cloud-offline-outline"
+              size={23}
+              color="#E65100"
+            />
+
+            <View style={styles.contenidoAviso}>
+              <Text style={styles.tituloAviso}>
+                Modo sin conexión
+              </Text>
+
+              <Text style={styles.textoAviso}>
+                No podés acceder a la configuración de seguridad
+                hasta recuperar la conexión a Internet.
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Opciones del perfil */}
         <View style={styles.tarjetaOpciones}>
           <Pressable
             style={styles.opcion}
-            onPress={() => router.push("/seguridad")}
+            onPress={abrirSeguridad}
           >
             <View style={styles.iconoOpcion}>
               <Ionicons
                 name="shield-checkmark-outline"
                 size={24}
-                color="#1565C0"
+                color={sinConexion ? "#9E9E9E" : "#1565C0"}
               />
             </View>
 
             <View style={styles.textosOpcion}>
-              <Text style={styles.tituloOpcion}>
+              <Text
+                style={[
+                  styles.tituloOpcion,
+                  sinConexion && styles.textoDeshabilitado,
+                ]}
+              >
                 Seguridad
               </Text>
 
               <Text style={styles.descripcionOpcion}>
-                Acceso biométrico y contraseña
+                {sinConexion
+                  ? "Requiere conexión a Internet"
+                  : "Acceso biométrico y contraseña"}
               </Text>
             </View>
 
             <Ionicons
-              name="chevron-forward"
+              name={
+                sinConexion
+                  ? "cloud-offline-outline"
+                  : "chevron-forward"
+              }
               size={20}
               color="#9E9E9E"
             />
@@ -200,6 +245,38 @@ const styles = StyleSheet.create({
     color: "#757575",
     marginTop: 5,
   },
+
+  avisoSinConexion: {
+  backgroundColor: "#FFF3E0",
+  borderRadius: 12,
+  padding: 16,
+  flexDirection: "row",
+  alignItems: "flex-start",
+  gap: 12,
+  borderWidth: 1,
+  borderColor: "#FFE0B2",
+},
+
+contenidoAviso: {
+  flex: 1,
+  gap: 5,
+},
+
+tituloAviso: {
+  fontSize: 15,
+  fontWeight: "bold",
+  color: "#E65100",
+},
+
+textoAviso: {
+  fontSize: 13,
+  color: "#795548",
+  lineHeight: 20,
+},
+
+textoDeshabilitado: {
+  color: "#9E9E9E",
+},
 
   tarjetaOpciones: {
     backgroundColor: "#FFFFFF",
