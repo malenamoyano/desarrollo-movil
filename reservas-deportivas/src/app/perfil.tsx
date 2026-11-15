@@ -18,7 +18,8 @@ import {
   mostrarAvisoSinConexion,
 } from "../hooks/useConexion";
 
-type NombreIcono = React.ComponentProps<typeof Ionicons>["name"];
+type NombreIcono =
+  React.ComponentProps<typeof Ionicons>["name"];
 
 interface OpcionPerfil {
   titulo: string;
@@ -55,10 +56,13 @@ const opciones: OpcionPerfil[] = [
 ];
 
 export default function Perfil() {
-  const { usuario, cargandoSesion, cerrarSesion } = useAuth();
+  const { usuario, cargandoSesion, cerrarSesion } =
+    useAuth();
+
   const { sinConexion } = useConexion();
 
-  const [cerrandoSesion, setCerrandoSesion] = useState(false);
+  const [cerrandoSesion, setCerrandoSesion] =
+    useState(false);
 
   async function salir() {
     setCerrandoSesion(true);
@@ -96,14 +100,23 @@ export default function Perfil() {
     );
   }
 
+  // --------------------------------------------------
+  // NAVEGACIÓN DESDE MI PERFIL
+  // --------------------------------------------------
   function abrirOpcion(titulo: string) {
-    // Mis reservas funciona tanto online como offline.
+    // Mis reservas funciona online y offline.
     if (titulo === "Mis reservas") {
       router.push("/mis-reservas");
       return;
     }
 
-    // Seguridad también funciona sin conexión.
+    // Mis favoritos también puede consultarse offline.
+    if (titulo === "Mis favoritos") {
+      router.push("/favoritos");
+      return;
+    }
+
+    // Seguridad mantiene su acceso offline.
     if (titulo === "Seguridad") {
       router.push("/seguridad");
       return;
@@ -116,11 +129,6 @@ export default function Perfil() {
     // Las demás opciones requieren conexión a Internet.
     if (sinConexion) {
       mostrarAvisoSinConexion();
-      return;
-    }
-
-    if (titulo === "Mis favoritos") {
-      router.push("/favoritos");
       return;
     }
 
@@ -230,8 +238,9 @@ export default function Perfil() {
               </Text>
 
               <Text style={styles.textoAviso}>
-                Podés consultar tus próximas reservas guardadas
-                y presentar sus códigos QR.
+                Podés consultar tus próximas reservas,
+                presentar sus códigos QR y ver tus
+                favoritos guardados.
               </Text>
             </View>
           </View>
@@ -240,10 +249,13 @@ export default function Perfil() {
         {/* Opciones del perfil */}
         <View style={styles.tarjetaOpciones}>
           {opciones.map((opcion, indice) => {
+            // Estas tres opciones están habilitadas
+            // tanto online como offline.
             const requiereConexion =
               opcion.titulo !== "Mis reservas" &&
               opcion.titulo !== "Seguridad" &&
               opcion.titulo !== "Notificaciones";
+              opcion.titulo !== "Mis favoritos" &&
 
             const opcionSinConexion =
               sinConexion && requiereConexion;
@@ -256,7 +268,9 @@ export default function Perfil() {
                   indice < opciones.length - 1 &&
                     styles.bordeInferior,
                 ]}
-                onPress={() => abrirOpcion(opcion.titulo)}
+                onPress={() =>
+                  abrirOpcion(opcion.titulo)
+                }
               >
                 <View style={styles.iconoOpcion}>
                   <Ionicons
@@ -281,7 +295,9 @@ export default function Perfil() {
                     {opcion.titulo}
                   </Text>
 
-                  <Text style={styles.descripcionOpcion}>
+                  <Text
+                    style={styles.descripcionOpcion}
+                  >
                     {opcionSinConexion
                       ? "Requiere conexión a Internet"
                       : opcion.descripcion}
