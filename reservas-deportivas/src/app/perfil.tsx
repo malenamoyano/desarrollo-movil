@@ -249,13 +249,13 @@ export default function Perfil() {
         {/* Opciones del perfil */}
         <View style={styles.tarjetaOpciones}>
           {opciones.map((opcion, indice) => {
-            // Estas tres opciones están habilitadas
+            // Estas cuatro opciones están habilitadas
             // tanto online como offline.
             const requiereConexion =
               opcion.titulo !== "Mis reservas" &&
               opcion.titulo !== "Seguridad" &&
-              opcion.titulo !== "Notificaciones";
-              opcion.titulo !== "Mis favoritos" &&
+              opcion.titulo !== "Notificaciones" &&
+              opcion.titulo !== "Mis favoritos";
 
             const opcionSinConexion =
               sinConexion && requiereConexion;
