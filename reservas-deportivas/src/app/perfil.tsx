@@ -1,3 +1,4 @@
+
 import { router, Stack } from "expo-router";
 import { useState } from "react";
 import {
@@ -108,6 +109,10 @@ export default function Perfil() {
       return;
     }
 
+    if(titulo === "Notificaciones") {
+      router.push("/notificaciones");
+      return;
+    }
     // Las demás opciones requieren conexión a Internet.
     if (sinConexion) {
       mostrarAvisoSinConexion();
@@ -237,7 +242,8 @@ export default function Perfil() {
           {opciones.map((opcion, indice) => {
             const requiereConexion =
               opcion.titulo !== "Mis reservas" &&
-              opcion.titulo !== "Seguridad";
+              opcion.titulo !== "Seguridad" &&
+              opcion.titulo !== "Notificaciones";
 
             const opcionSinConexion =
               sinConexion && requiereConexion;

@@ -1,5 +1,20 @@
+
+import { Platform } from "react-native";
 import { Stack } from "expo-router";
+import * as Notifications from "expo-notifications";
+
 import { AuthProvider } from "../contextos/AuthContext";
+
+if (Platform.OS !== "web") {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+}
 
 export default function RootLayout() {
   return (
@@ -85,12 +100,20 @@ export default function RootLayout() {
           }}
         />
 
-      <Stack.Screen
-        name="encargado"
-        options={{
-          headerShown: false,
-        }}
-      />
+        <Stack.Screen
+          name="encargado"
+          options={{
+            headerShown: false,
+          }}
+        />
+
+        <Stack.Screen
+          name="notificaciones"
+          options={{
+            title: "Notificaciones",
+            headerBackTitle: "Volver",
+          }}
+        />
 
       </Stack>
     </AuthProvider>

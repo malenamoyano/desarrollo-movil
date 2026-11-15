@@ -27,6 +27,9 @@ import {
   cancelarReserva,
   obtenerMisReservas,
 } from "../servicios/reservas";
+import { cancelarRecordatorio, sincronizarRecordatorios } from "../servicios/recordatorios";
+import type { RecordatorioTurno } from "../tipos/notificaciones";
+import { avisarCambiosDeReserva, avisarTurnosFavoritosLiberados } from "../servicios/avisos";
 
 type Vista = "proximas" | "pasadas";
 
@@ -88,6 +91,39 @@ function formatearFecha(fechaISO: string): string {
     month: "long",
     year: "numeric",
   });
+}
+
+//helper para convertir reservas en recordatorios
+function obtenerRecordatorios(reservas: ReservaGuardada[]): RecordatorioTurno[] {
+  const recordatorios: RecordatorioTurno[] = [];
+  for (const reserva of reservas) {
+    if(
+      reserva.estado !== "confirmada" ||
+      !reserva._fecha ||
+      !reserva._inicio ||
+      !reserva._fin
+    ) {
+      continue;
+    }
+
+    recordatorios.push({
+      reservaId: reserva.id,
+      espacioNombre: reserva._nombreEspacio ?? `Espacio ${reserva.espacioId}`,
+      fecha: reserva._fecha,
+      inicio: reserva._inicio,
+      fin: reserva._fin,
+    });
+  }
+  return recordatorios;
+}
+
+//helper para sincronizar sin romper la carga
+async function sincronizarRecordatoriosDeReservas(reservas: ReservaGuardada[], idsActuales?: Set<string>): Promise<void> {
+  try{
+    await sincronizarRecordatorios(obtenerRecordatorios(reservas), idsActuales);
+  } catch(error) {
+    console.warn("No se pudieron sincronizar los recordatorios: ", error);
+  }
 }
 
 export default function MisReservas() {
@@ -154,6 +190,7 @@ export default function MisReservas() {
           return; // El historial no se guarda en SQLite.
         }
 
+        const anteriores = (await obtenerReservasLocales(usuario.id)) as ReservaGuardada[];
         const idsEspacios = [...new Set(datosReservas.map((r) => r.espacioId))];
         const fechas = obtenerProximosSieteDias();
         const consultas = idsEspacios.flatMap((espacioId) =>
@@ -167,7 +204,6 @@ export default function MisReservas() {
           }
         }
         setTurnosPorId(encontrados);
-
         // Solo próximas confirmadas se guardan para mostrar QR offline.
         const guardables: ReservaGuardada[] = datosReservas
           .filter((r) => r.estado === "confirmada")
@@ -182,15 +218,43 @@ export default function MisReservas() {
             };
           });
 
-        // Sustituir el caché anterior elimina QR de reservas
-        // que ya no aparecen como próximas/confirmadas.
+        const reservasSuspendidas = await avisarCambiosDeReserva(
+          anteriores,
+          datosReservas,
+          encontrados,
+          datosEspacios
+        );
+
+        // No guardamos ni les programamos recordatorio a las suspendidas.
+        const guardablesVigentes = guardables.filter((reserva) => {
+          if (reservasSuspendidas.has(reserva.id)) return false;
+
+          const turno = encontrados[reserva.turnoId];
+          return !(
+            turno?.estado === "mantenimiento" ||
+            Boolean(turno?.motivoBloqueo)
+          );
+        });
+
+        // Sustituir el caché anterior elimina QR de reservas que ya no aparecen como próximas/confirmadas.
         try {
           await eliminarReservasLocales(usuario.id);
-          await guardarReservasLocales(usuario.id, guardables);
+          await guardarReservasLocales(usuario.id, guardablesVigentes);
         } catch (err) {
           console.error("No se pudo actualizar la copia offline:", err);
         }
         setReservas(datosReservas);
+
+        await sincronizarRecordatoriosDeReservas(
+          guardablesVigentes,
+          new Set(guardablesVigentes.map((r) => r.id))
+        );
+
+        await avisarTurnosFavoritosLiberados(
+          usuario.id,
+          usuario.espaciosFavoritos ?? [],
+          datosEspacios
+        );
       } catch (err) {
         setError(err instanceof Error ? err.message : "No se pudieron cargar las reservas.");
       } finally {
@@ -198,7 +262,7 @@ export default function MisReservas() {
         setActualizando(false);
       }
     },
-    [vista, usuario?.id]
+    [vista, usuario]
   );
 
   useFocusEffect(
@@ -245,6 +309,9 @@ export default function MisReservas() {
         await guardarReservaLocal(usuario.id, {
           ...reserva, estado: "cancelada", codigoQr: "",
         }).catch((e) => console.error("Error actualizando reserva local:", e));
+        await cancelarRecordatorio(reserva.id).catch((error) => {
+          console.warn("No se pudo cancelar el recordatorio: ", error);
+        });
       }
 
       Alert.alert(
@@ -285,7 +352,8 @@ export default function MisReservas() {
 
   function renderizarReserva({ item }: { item: ReservaGuardada }) {
     const turno = turnosPorId[item.turnoId];
-    const cancelable = !sinConexion && sePuedeCancelar(item);
+    const suspendida = turno?.estado === "mantenimiento" || Boolean(turno?.motivoBloqueo);
+    const cancelable = !sinConexion && !suspendida && sePuedeCancelar(item);
 
     return (
       <View style={styles.tarjeta}>
@@ -298,14 +366,16 @@ export default function MisReservas() {
           <Text
             style={[
               styles.estado,
-              item.estado === "confirmada"
-                ? styles.confirmada
-                : item.estado === "cancelada"
-                  ? styles.cancelada
-                  : styles.otroEstado,
+              suspendida
+                ? styles.cancelada
+                : item.estado === "confirmada"
+                  ? styles.confirmada
+                  : item.estado === "cancelada"
+                    ? styles.cancelada
+                    : styles.otroEstado,
             ]}
           >
-            {nombresEstados[item.estado]}
+            {suspendida ? "Suspendida" : nombresEstados[item.estado]}
           </Text>
         </View>
 
@@ -357,7 +427,7 @@ export default function MisReservas() {
 
         <View style={styles.separador} />
 
-        {item.estado === "confirmada" && (
+        {item.estado === "confirmada" && !suspendida && (
         <Pressable
             style={styles.botonQR}
             onPress={() =>
@@ -378,8 +448,13 @@ export default function MisReservas() {
             </Text>
         </Pressable>
         )}
+        {suspendida && (
+          <Text style={styles.aviso}>
+            Suspendimos este turno. Tenes que comunicarte con el complejo para más información.
+          </Text>
+        )}
 
-        {sinConexion && item.estado === "confirmada" && (
+        {sinConexion && item.estado === "confirmada" && !suspendida && (
           <Text style={styles.aviso}>Sin conexión: no se puede cancelar la reserva.</Text>
         )}
 
@@ -413,7 +488,7 @@ export default function MisReservas() {
           </>
         )}
 
-        {item.estado === "confirmada" && !cancelable && !sinConexion && (
+        {item.estado === "confirmada" && !cancelable && !sinConexion && !suspendida && (
           <Text style={styles.aviso}>
             El plazo de cancelación venció. Si necesitás
             cancelar, comunicate con el encargado.
