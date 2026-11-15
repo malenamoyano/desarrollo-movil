@@ -262,6 +262,14 @@ export function AuthProvider({
   async function cerrarSesion(): Promise<void> {
     const usuarioActual = usuario;
 
+    //se cancelan los recordatorios si el usuario cierra sesión
+    try {
+      const { cancelarTodosLosRecordatorios } = await import("../servicios/recordatorios");
+      await cancelarTodosLosRecordatorios();
+    } catch (error) {
+      console.warn("No se pudieron cancelar los recordatorios al cerrar sesión: ", error);
+    }
+
     // Importar SQLite solamente al cerrar sesión.
     if (usuarioActual) {
       const { eliminarReservasLocales } = await import(

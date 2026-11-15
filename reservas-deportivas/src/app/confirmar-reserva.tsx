@@ -20,6 +20,8 @@ import { useAuth } from "../contextos/AuthContext";
 import { obtenerEspacios } from "../servicios/espacios";
 import { crearReserva } from "../servicios/reservas";
 import type { Espacio } from "../tipos/types";
+import { pedirPermiso, obtenerEstadoPermiso } from "../servicios/notificaciones";
+import { programarRecordatorio, recordatoriosHabilitados } from "../servicios/recordatorios";
 
 export default function ConfirmarReserva() {
   const { turnoId, espacioId, fecha, inicio, fin } =
@@ -99,6 +101,52 @@ export default function ConfirmarReserva() {
     );
   }
 
+  function preguntarSiQuiereRecordatorio(): Promise<boolean> {
+    return new Promise((resolve) => {
+      Alert.alert("Recordatorio del turno", "¿Querés que te avisemos 2 horas antes de tu reserva?",
+        [
+          {
+            text: "Ahora no",
+            style: "cancel",
+            onPress: () => resolve(false),
+          },
+          {
+            text: "Activar notificaciones",
+            onPress: () => resolve(true),
+          },
+        ],
+        {
+          cancelable: true,
+          onDismiss: () => resolve(false),
+        }
+      );
+    });
+  }
+
+  async function ofrecerRecordatorio(reservaId: string) {
+    if (!espacio || !fecha || !inicio || !fin) return;
+
+    try {
+      //Si el usuario apagó los recordatorios en la pantalla no le preguntamos
+      if (!(await recordatoriosHabilitados())) return;
+
+      let estado = await obtenerEstadoPermiso();
+
+      // Solo preguntamos si el sistema todavía no decidió.
+      if (estado === "undetermined"){
+        const quiereActivar = await preguntarSiQuiereRecordatorio();
+        if(!quiereActivar) return;
+
+        estado = await pedirPermiso();
+      }
+      if (estado !== "granted") return;
+
+      await programarRecordatorio({reservaId, espacioNombre: espacio.nombre, fecha, inicio, fin,});
+    } catch (error) {
+      console.warn("No se pudo preparar el recordatorio: ", error);
+    }
+  }
+
   async function realizarReserva() {
     if (!turnoId || !espacio) {
       Alert.alert("Error", "Faltan datos del turno seleccionado.");
@@ -134,7 +182,9 @@ export default function ConfirmarReserva() {
     setConfirmando(true);
 
     try {
-      await crearReserva(turnoId, cantidadPersonas);
+      const reserva = await crearReserva(turnoId, cantidadPersonas);
+
+      await ofrecerRecordatorio(reserva.id);
 
       Alert.alert(
         "¡Reserva confirmada!",
