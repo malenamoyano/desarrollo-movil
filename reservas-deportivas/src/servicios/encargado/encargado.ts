@@ -8,6 +8,11 @@ interface RespuestaTurnos {
   meta?: unknown;
 }
 
+interface RespuestaReservas {
+  datos: Reserva[];
+  meta?: unknown;
+}
+
 interface RespuestaReserva {
   datos: Reserva;
   meta?: unknown;
@@ -58,6 +63,42 @@ export async function obtenerAgenda(
   }
 
   const resultado: RespuestaTurnos = await respuesta.json();
+
+  return resultado.datos;
+}
+
+export async function obtenerReservasPorFecha(
+  fecha: string
+): Promise<Reserva[]> {
+  const token = await obtenerToken();
+
+  if (!token) {
+    throw new Error(
+      "Debés iniciar sesión para consultar las reservas."
+    );
+  }
+
+  let respuesta: Response;
+
+  try {
+    respuesta = await fetch(
+      `${API_URL}/reservas?fecha=${encodeURIComponent(fecha)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+      }
+    );
+  } catch {
+    throw new Error("No se pudo conectar con el servidor.");
+  }
+
+  if (!respuesta.ok) {
+    throw new Error(await obtenerMensajeError(respuesta));
+  }
+
+  const resultado: RespuestaReservas = await respuesta.json();
 
   return resultado.datos;
 }
