@@ -121,6 +121,36 @@ export default function EncargadoIndex() {
         />
       </Pressable>
 
+      <Pressable
+        style={styles.tarjeta}
+        onPress={() => router.push("/encargado/bloqueos")}
+      >
+        <View style={styles.iconoContenedor}>
+          <Ionicons
+            name="lock-closed-outline"
+            size={30}
+            color="#1565C0"
+          />
+        </View>
+
+        <View style={styles.contenidoTarjeta}>
+          <Text style={styles.tituloTarjeta}>
+            Gestionar bloqueos
+          </Text>
+
+          <Text style={styles.descripcionTarjeta}>
+            Bloquear canchas por lluvia o mantenimiento y
+            administrar los bloqueos existentes.
+          </Text>
+        </View>
+
+        <Ionicons
+          name="chevron-forward"
+          size={22}
+          color="#757575"
+        />
+      </Pressable>
+
     </View>
   );
 }
