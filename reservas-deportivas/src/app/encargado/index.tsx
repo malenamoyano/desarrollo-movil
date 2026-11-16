@@ -1,5 +1,6 @@
 import {
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -15,7 +16,11 @@ export default function EncargadoIndex() {
   <Stack.Screen options={{ title: "Panel de gestión" }} />
 
   return (
-    <View style={styles.contenedor}>
+    <ScrollView
+      style={styles.contenedor}
+      contentContainerStyle={styles.contenido}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.seccionUsuario}>
         <Text style={styles.textoBienvenida}>
           ¡Hola, {usuario?.nombre}!
@@ -151,16 +156,49 @@ export default function EncargadoIndex() {
         />
       </Pressable>
 
-    </View>
+      <Pressable
+        style={styles.tarjeta}
+        onPress={() => router.push("/encargado/reservas-fijas")}
+      >
+        <View style={styles.iconoContenedor}>
+          <Ionicons
+            name="repeat-outline"
+            size={30}
+            color="#1565C0"
+          />
+        </View>
+
+        <View style={styles.contenidoTarjeta}>
+          <Text style={styles.tituloTarjeta}>
+            Reservas fijas
+          </Text>
+
+          <Text style={styles.descripcionTarjeta}>
+            Consultar reservas recurrentes de los espacios deportivos.
+          </Text>
+        </View>
+
+        <Ionicons
+          name="chevron-forward"
+          size={22}
+          color="#757575"
+        />
+      </Pressable>
+
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   contenedor: {
-    flex: 1,
-    backgroundColor: "#F5F5F5",
-    padding: 20,
-  },
+  flex: 1,
+  backgroundColor: "#F5F5F5",
+},
+
+contenido: {
+  padding: 20,
+  paddingBottom: 65,
+},
 
   titulo: {
     fontSize: 24,

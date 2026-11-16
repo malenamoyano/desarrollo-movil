@@ -1,4 +1,9 @@
-import type { Turno, Reserva } from "../../tipos/types";
+import type {
+  Turno,
+  Reserva,
+  ReservaFija,
+  Espacio,
+} from "../../tipos/types";
 import type { Bloqueo } from "../../tipos/api";
 import { obtenerToken } from "../auth";
 
@@ -16,6 +21,21 @@ interface RespuestaReservas {
 
 interface RespuestaBloqueos {
   datos: Bloqueo[];
+  meta?: unknown;
+}
+
+interface RespuestaReservasFijas {
+  datos: ReservaFija[];
+  meta?: unknown;
+}
+
+interface RespuestaReservaFija {
+  datos: ReservaFija;
+  meta?: unknown;
+}
+
+interface RespuestaEspacio {
+  datos: Espacio;
   meta?: unknown;
 }
 
@@ -333,4 +353,226 @@ export async function eliminarBloqueo(
   if (!respuesta.ok) {
     throw new Error(await obtenerMensajeError(respuesta));
   }
+}
+
+export async function obtenerReservasFijas(
+  filtros: {
+    espacioId?: string;
+    activa?: boolean;
+  } = {}
+): Promise<ReservaFija[]> {
+  const token = await obtenerToken();
+
+  if (!token) {
+    throw new Error(
+      "Debés iniciar sesión para consultar las reservas fijas."
+    );
+  }
+
+  const parametros: string[] = [];
+
+  if (filtros.espacioId) {
+    parametros.push(
+      `espacioId=${encodeURIComponent(filtros.espacioId)}`
+    );
+  }
+
+  if (filtros.activa !== undefined) {
+    parametros.push(`activa=${filtros.activa}`);
+  }
+
+  const query = parametros.length
+    ? `?${parametros.join("&")}`
+    : "";
+
+  let respuesta: Response;
+
+  try {
+    respuesta = await fetch(`${API_URL}/fijas${query}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
+    });
+  } catch {
+    throw new Error("No se pudo conectar con el servidor.");
+  }
+
+  if (!respuesta.ok) {
+    throw new Error(await obtenerMensajeError(respuesta));
+  }
+
+  const resultado: RespuestaReservasFijas =
+    await respuesta.json();
+
+  return resultado.datos;
+}
+
+export async function crearReservaFija(datos: {
+  espacioId: string;
+  titular: string;
+  dia: ReservaFija["dia"];
+  inicio: string;
+  fin: string;
+  desde: string;
+  hasta?: string | null;
+}): Promise<ReservaFija> {
+  const token = await obtenerToken();
+
+  if (!token) {
+    throw new Error(
+      "Debés iniciar sesión para crear reservas fijas."
+    );
+  }
+
+  let respuesta: Response;
+
+  try {
+    respuesta = await fetch(`${API_URL}/fijas`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(datos),
+    });
+  } catch {
+    throw new Error("No se pudo conectar con el servidor.");
+  }
+
+  if (!respuesta.ok) {
+    throw new Error(await obtenerMensajeError(respuesta));
+  }
+
+  const resultado: RespuestaReservaFija =
+    await respuesta.json();
+
+  return resultado.datos;
+}
+
+export async function editarReservaFija(
+  id: string,
+  datos: Partial<
+    Pick<
+      ReservaFija,
+      "espacioId" | "titular" | "dia" |
+      "inicio" | "fin" | "desde" | "hasta"
+    >
+  >
+): Promise<ReservaFija> {
+  const token = await obtenerToken();
+
+  if (!token) {
+    throw new Error(
+      "Debés iniciar sesión para editar reservas fijas."
+    );
+  }
+
+  let respuesta: Response;
+
+  try {
+    respuesta = await fetch(
+      `${API_URL}/fijas/${encodeURIComponent(id)}`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(datos),
+      }
+    );
+  } catch {
+    throw new Error("No se pudo conectar con el servidor.");
+  }
+
+  if (!respuesta.ok) {
+    throw new Error(await obtenerMensajeError(respuesta));
+  }
+
+  const resultado: RespuestaReservaFija =
+    await respuesta.json();
+
+  return resultado.datos;
+}
+
+export async function eliminarReservaFija(
+  id: string
+): Promise<void> {
+  const token = await obtenerToken();
+
+  if (!token) {
+    throw new Error(
+      "Debés iniciar sesión para dar de baja reservas fijas."
+    );
+  }
+
+  let respuesta: Response;
+
+  try {
+    respuesta = await fetch(
+      `${API_URL}/fijas/${encodeURIComponent(id)}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+      }
+    );
+  } catch {
+    throw new Error("No se pudo conectar con el servidor.");
+  }
+
+  if (!respuesta.ok) {
+    throw new Error(await obtenerMensajeError(respuesta));
+  }
+}
+
+export async function actualizarPrecioEspacio(
+  espacioId: string,
+  precioPorHora: number
+): Promise<Espacio> {
+  const token = await obtenerToken();
+
+  if (!token) {
+    throw new Error(
+      "Debés iniciar sesión para modificar precios."
+    );
+  }
+
+  if (!Number.isInteger(precioPorHora) || precioPorHora <= 0) {
+    throw new Error(
+      "El precio debe ser un número entero mayor que cero."
+    );
+  }
+
+  let respuesta: Response;
+
+  try {
+    respuesta = await fetch(
+      `${API_URL}/espacios/${encodeURIComponent(espacioId)}`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ precioPorHora }),
+      }
+    );
+  } catch {
+    throw new Error("No se pudo conectar con el servidor.");
+  }
+
+  if (!respuesta.ok) {
+    throw new Error(await obtenerMensajeError(respuesta));
+  }
+
+  const resultado: RespuestaEspacio = await respuesta.json();
+
+  return resultado.datos;
 }
