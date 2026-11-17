@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useVideoPlayer, VideoView, type VideoSource } from 'expo-video';
 import { StyleSheet, View, Text } from 'react-native';
 import { Asset } from 'expo-asset';
