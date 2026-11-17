@@ -225,25 +225,6 @@ export default function DetalleEspacio() {
   }
 
   // --------------------------------------------------
-  // VIDEO
-  // --------------------------------------------------
-
-  // Los videos incluidos mediante require() son números.
-  // Las rutas locales también pueden reproducirse offline.
-  // No asumimos que videoUrl siempre es un string.
-  const videoEsLocal =
-    typeof espacio.videoUrl === "number" ||
-    (typeof espacio.videoUrl === "string" &&
-      (espacio.videoUrl.startsWith("file://") ||
-        espacio.videoUrl.startsWith("content://") ||
-        espacio.videoUrl.startsWith("asset://")));
-
-  const puedeMostrarVideo =
-    !sinConexion ||
-    espacio.videoUrl == null ||
-    videoEsLocal;
-
-  // --------------------------------------------------
   // VALIDAR COORDENADAS
   // --------------------------------------------------
   const tieneCoordenadas =
@@ -356,17 +337,10 @@ export default function DetalleEspacio() {
           </Text>
 
           {/* VIDEO */}
-          {puedeMostrarVideo ? (
-            <ReproductorVideo
-              videoUrl={espacio.videoUrl ?? null}
-            />
-          ) : (
-            <Text style={styles.mensajeVideoOffline}>
-              El video necesita conexión y todavía
-              no está disponible como archivo local.
-            </Text>
-          )}
-
+          <ReproductorVideo 
+            videoUrl={espacio.videoUrl ?? null}
+          />
+          
           <Text style={styles.etiqueta}>
             Superficie
           </Text>
@@ -677,12 +651,5 @@ const styles = StyleSheet.create({
     color: "#8B5400",
     marginTop: 8,
     fontStyle: "italic",
-  },
-
-  mensajeVideoOffline: {
-    fontSize: 13,
-    color: "#777777",
-    lineHeight: 20,
-    marginBottom: 12,
   },
 });

@@ -18,7 +18,7 @@ import type { Deporte, Espacio } from "../tipos/types";
 
 import { obtenerEspacios } from "../servicios/espacios";
 import { obtenerDeportes } from "../servicios/deportes";
-import { sincronizarFotosEspacio } from "../servicios/mediosEspacios";
+import { descargarVideo, sincronizarFotosEspacio } from "../servicios/mediosEspacios";
 
 import {
   guardarPreferenciasCatalogo,
@@ -210,6 +210,11 @@ export default function Inicio() {
             "No se pudo sincronizar una fotografía:",
             error
           );
+        }
+      );
+      void descargarVideo(espacio).catch(
+        (error) => {
+          console.warn("No se pudo descargar el video: ", error);
         }
       );
     });
