@@ -185,6 +185,37 @@ export default function EncargadoIndex() {
         />
       </Pressable>
 
+    {usuario?.rol === "administrador" && (
+      <Pressable
+        style={styles.tarjeta}
+        onPress={() => router.push("/encargado/precios")}
+      >
+        <View style={styles.iconoContenedor}>
+          <Ionicons
+            name="cash-outline"
+            size={30}
+            color="#1565C0"
+          />
+        </View>
+
+        <View style={styles.contenidoTarjeta}>
+          <Text style={styles.tituloTarjeta}>
+            Gestionar precios
+          </Text>
+
+          <Text style={styles.descripcionTarjeta}>
+            Consultar y actualizar el precio por hora de cada espacio deportivo.
+          </Text>
+        </View>
+
+        <Ionicons
+          name="chevron-forward"
+          size={22}
+          color="#757575"
+        />
+      </Pressable>
+    )}
+
     </ScrollView>
   );
 }

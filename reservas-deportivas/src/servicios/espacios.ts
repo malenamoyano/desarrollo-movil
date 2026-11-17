@@ -8,13 +8,49 @@ import {
   obtenerEspaciosLocales,
 } from "./cacheEspacios";
 
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
+
+type PrecioEspacio = Pick<
+  Espacio,
+  "id" | "precioPorHora"
+>;
+
+interface RespuestaPreciosEspacios {
+  datos: PrecioEspacio[];
+  meta?: unknown;
+}
+
+function aplicarPrecios(
+  espaciosLocales: Espacio[],
+  espaciosConPrecios: PrecioEspacio[]
+): Espacio[] {
+  const preciosPorId = new Map(
+    espaciosConPrecios.map((espacio) => [
+      espacio.id,
+      espacio.precioPorHora,
+    ])
+  );
+
+  return espaciosLocales.map((espacio) => {
+    const precioActualizado = preciosPorId.get(espacio.id);
+
+    if (precioActualizado === undefined) {
+      return espacio;
+    }
+
+    return {
+      ...espacio,
+      precioPorHora: precioActualizado,
+    };
+  });
+}
+
 export async function obtenerEspacios(): Promise<Espacio[]> {
-  const espacios = espaciosMock.filter(
+  const espaciosLocales = espaciosMock.filter(
     (espacio) => espacio.activo
   );
 
   try {
-    // Comprobar el estado de conexión.
     const estadoRed = await Network.getNetworkStateAsync();
 
     const sinConexion =
@@ -22,31 +58,71 @@ export async function obtenerEspacios(): Promise<Espacio[]> {
       estadoRed.isInternetReachable === false;
 
     if (sinConexion) {
-      // Intentar recuperar el catálogo guardado en SQLite.
       const espaciosGuardados = await obtenerEspaciosLocales();
 
-      if (espaciosGuardados.length > 0) {
-        return espaciosGuardados;
-      }
-
-      // Si todavía no existe una copia local,
-      // utilizar los mocks incluidos en la aplicación.
-      return espacios;
+      return espaciosGuardados.length > 0
+        ? aplicarPrecios(espaciosLocales, espaciosGuardados)
+        : espaciosLocales;
     }
 
-    // Con conexión, guardar una copia del catálogo
-    // para futuras consultas offline.
-    await guardarEspaciosLocales(espacios);
+    if (!API_URL) {
+      throw new Error(
+        "No está configurada la URL de la API."
+      );
+    }
 
-    return espacios;
+    const respuesta = await fetch(`${API_URL}/espacios`, {
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
+    if (!respuesta.ok) {
+      throw new Error(
+        `Error del servidor (${respuesta.status}).`
+      );
+    }
+
+    const resultado: RespuestaPreciosEspacios =
+      await respuesta.json();
+
+    if (!Array.isArray(resultado.datos)) {
+      throw new Error(
+        "La API devolvió una respuesta de espacios inválida."
+      );
+    }
+
+    const espaciosActualizados = aplicarPrecios(
+      espaciosLocales,
+      resultado.datos
+    );
+
+    await guardarEspaciosLocales(espaciosActualizados);
+
+    return espaciosActualizados;
   } catch (error) {
     console.warn(
-      "No se pudo utilizar la caché de espacios:",
+      "No se pudieron sincronizar los precios de los espacios:",
       error
     );
 
-    // Evitar que un fallo de SQLite impida ver las canchas.
-    return espacios;
+    try {
+      const espaciosGuardados = await obtenerEspaciosLocales();
+
+      if (espaciosGuardados.length > 0) {
+        return aplicarPrecios(
+          espaciosLocales,
+          espaciosGuardados
+        );
+      }
+    } catch (errorCache) {
+      console.warn(
+        "No se pudo recuperar la caché de espacios:",
+        errorCache
+      );
+    }
+
+    return espaciosLocales;
   }
 }
 
