@@ -44,11 +44,6 @@ const opciones: OpcionPerfil[] = [
     icono: "heart-outline",
   },
   {
-    titulo: "Datos personales",
-    descripcion: "Consultar y editar mis datos",
-    icono: "person-outline",
-  },
-  {
     titulo: "Seguridad",
     descripcion: "Acceso biométrico y contraseña",
     icono: "shield-checkmark-outline",
