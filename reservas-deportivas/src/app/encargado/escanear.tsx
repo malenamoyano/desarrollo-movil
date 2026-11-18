@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -19,6 +19,8 @@ export default function Escanear() {
   const [espacioId, setEspacioId] = useState("");
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [escaneoHabilitado, setEscaneoHabilitado] = useState(true);
+  const bloqueoEscaneo = useRef(false);
 
   // Pedir permiso de cámara al montar
   useEffect(() => {
@@ -55,7 +57,10 @@ export default function Escanear() {
   }
 
   function manejarCodigo(datos: { data: string }) {
-    if (codigoQr || error) return;
+    if (bloqueoEscaneo.current || codigoQr || error || cargando) return;
+
+    bloqueoEscaneo.current = true;
+    setEscaneoHabilitado(false);
 
     let contenido: {
       codigoQr?: unknown;
@@ -101,50 +106,63 @@ export default function Escanear() {
   }
 
   async function registrarIngresoReserva() {
-    if (!codigoQr.trim()) {
-      Alert.alert("Datos incompletos", "Escaneá primero un código QR válido.");
-      return;
-    }
-
-    if (!espacioId.trim()) {
-      Alert.alert(
-        "Datos incompletos",
-        "Ingresá el ID del espacio donde se registra el ingreso."
-      );
-      return;
-    }
-
-    setCargando(true);
-    setError(null);
-
-    try {
-      const reserva = await registrarIngreso(codigoQr.trim(), espacioId.trim());
-      // Vibración de éxito (dos pulsos medios)
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      Alert.alert(
-        "Ingreso registrado",
-        `Reserva ${reserva.id} validada correctamente.`
-      );
-      setCodigoQr("");
-      setEspacioId("");
-    } catch (err) {
-      // Vibración de error (un pulso fuerte)
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      const mensaje =
-        err instanceof Error ? err.message : "Ocurrió un error inesperado.";
-      setError(mensaje);
-      Alert.alert("Error al registrar ingreso", mensaje);
-    } finally {
-      setCargando(false);
-    }
+  if (!codigoQr.trim()) {
+    Alert.alert("Datos incompletos", "Escaneá primero un código QR válido.");
+    return;
   }
 
-  function limpiarEscaneo() {
-    setCodigoQr("");
-    setEspacioId("");
-    setError(null);
+  if (!espacioId.trim()) {
+    Alert.alert(
+      "Datos incompletos",
+      "Ingresá el ID del espacio donde se registra el ingreso."
+    );
+    return;
   }
+
+  setCargando(true);
+  setError(null);
+
+  try {
+    await registrarIngreso(codigoQr.trim(), espacioId.trim());
+
+    // Vibración de éxito.
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    // Limpiar los datos del QR anterior.
+    limpiarDatosEscaneo();
+
+    Alert.alert(
+      "Ingreso registrado",
+      "La reserva fue validada correctamente. El jugador puede ingresar."
+    );
+  } catch (err) {
+    // Vibración de error.
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+
+    const mensaje =
+      err instanceof Error ? err.message : "Ocurrió un error inesperado.";
+
+    // Limpiar los datos incluso cuando la API rechaza el ingreso.
+    limpiarDatosEscaneo();
+
+    Alert.alert("Error al registrar ingreso", mensaje);
+  } finally {
+    setCargando(false);
+  }
+}
+
+  function limpiarDatosEscaneo() {
+  setCodigoQr("");
+  setEspacioId("");
+  setError(null);
+}
+
+function limpiarEscaneo() {
+  limpiarDatosEscaneo();
+  bloqueoEscaneo.current = false;
+  setEscaneoHabilitado(true);
+}
 
   return (
     <View style={styles.contenedor}>
@@ -154,7 +172,9 @@ export default function Escanear() {
           style={styles.camara}
           facing="back"
           onBarcodeScanned={
-            codigoQr || error ? undefined : manejarCodigo
+            escaneoHabilitado && !codigoQr && !error && !cargando
+              ? manejarCodigo
+              : undefined
           }
           barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
         />
@@ -206,13 +226,17 @@ export default function Escanear() {
           )}
         </Pressable>
 
-        {(codigoQr || error) && (
-          <Pressable style={styles.botonLimpiar} onPress={limpiarEscaneo}>
-            <Text style={styles.textoLimpiar}>
-              {codigoQr ? "Escanear otro código" : "Intentar nuevamente"}
-            </Text>
-          </Pressable>
-        )}
+        {(codigoQr || error || !escaneoHabilitado) && (
+        <Pressable style={styles.botonLimpiar} onPress={limpiarEscaneo}>
+          <Text style={styles.textoLimpiar}>
+            {codigoQr
+              ? "Escanear otro código"
+              : error
+                ? "Intentar nuevamente"
+                : "Escanear otro código"}
+          </Text>
+        </Pressable>
+      )}
       </View>
     </View>
   );

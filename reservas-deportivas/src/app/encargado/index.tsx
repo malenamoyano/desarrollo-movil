@@ -1,19 +1,42 @@
 import {
+  BackHandler,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { router, Stack } from "expo-router";
+import { router, Stack, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useCallback } from "react";
 
 import { useAuth } from "../../contextos/AuthContext";
 
 export default function EncargadoIndex() {
   const { usuario} = useAuth();
 
-  <Stack.Screen options={{ title: "Panel de gestión" }} />
+  useFocusEffect(
+  useCallback(() => {
+    const manejarAtras = () => {
+      BackHandler.exitApp();
+      return true;
+    };
+
+    const suscripcion = BackHandler.addEventListener(
+      "hardwareBackPress",
+      manejarAtras
+    );
+
+    return () => suscripcion.remove();
+  }, [])
+);
+
+  <Stack.Screen
+    options={{
+      title: "Panel de gestión",
+      headerBackVisible: false,
+    }}
+  />
 
   return (
     <ScrollView
