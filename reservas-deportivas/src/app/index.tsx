@@ -26,6 +26,7 @@ import {
 } from "../servicios/preferenciasLocales";
 
 import { useAuth } from "../contextos/AuthContext";
+import { useInicioListo } from "../contextos/InicioListoContext";
 
 import {
   useConexion,
@@ -64,6 +65,7 @@ export default function Inicio() {
 
   const { usuario, cargandoSesion } = useAuth();
   const { sinConexion } = useConexion();
+  const { avisarInicioListo } = useInicioListo();
 
   // --------------------------------------------------
   // RECUPERAR PREFERENCIAS DESDE KV-STORE
@@ -221,6 +223,29 @@ export default function Inicio() {
   }, [espacios, sinConexion]);
 
   // --------------------------------------------------
+  // AVISAR AL LAYOUT QUE INICIO ESTÁ LISTO
+  // --------------------------------------------------
+  useEffect(() => {
+    // Esperar recuperación de sesión.
+    if (cargandoSesion) return;
+
+    // Esperar que termine la consulta del catálogo.
+    if (cargando) return;
+
+    // Esperar las preferencias guardadas localmente.
+    if (!preferenciasCargadas) return;
+
+    // Todos los datos iniciales están preparados.
+    // El layout puede ocultar el logo.
+    avisarInicioListo();
+  }, [
+    cargandoSesion,
+    cargando,
+    preferenciasCargadas,
+    avisarInicioListo,
+  ]);
+
+  // --------------------------------------------------
   // DEPORTES Y COMPLEJOS PARA LOS FILTROS
   // --------------------------------------------------
   const deportesParaFiltros = useMemo(() => {
@@ -311,7 +336,7 @@ export default function Inicio() {
         </View>
 
         <Text style={styles.tituloBloqueo}>
-          Reservas Deportivas
+          Reservas Deportivas Villaguay
         </Text>
 
         <Text style={styles.descripcionBloqueo}>
@@ -358,11 +383,7 @@ export default function Inicio() {
   return (
     <View style={styles.contenedor}>
       <Text style={styles.titulo}>
-        Reservas Deportivas
-      </Text>
-
-      <Text style={styles.subtitulo}>
-        Espacios deportivos de Villaguay
+        Reservas Deportivas Villaguay
       </Text>
 
       {/* USUARIO Y PERFIL EN LA MISMA FILA */}
